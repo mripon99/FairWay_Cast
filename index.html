@@ -1,0 +1,2541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FairwayCast MN | Tee Times, Rates & Live Weather Cross-Reference</title>
+    
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        fairway: {
+                            950: '#0D241B',
+                            900: '#1B4332',
+                            800: '#245540',
+                            700: '#2D6A4F',
+                            600: '#40916C',
+                            100: '#E8F3EE',
+                            50: '#F4F9F6',
+                        },
+                        sand: {
+                            500: '#D4A373',
+                            400: '#E2B88D',
+                            200: '#F3DFC8',
+                            100: '#FAF3EB',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        /* Custom sleek scrollbars & subtle clubhouse textures */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        input[type="range"] {
+            accent-color: #1B4332;
+        }
+
+        .tee-pill-scroll::-webkit-scrollbar {
+            height: 5px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Top Data Transparency & Status Ribbon -->
+    <div class="bg-fairway-950 text-slate-200 text-xs py-2 px-4 border-b border-fairway-800">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <span class="inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                <span id="weather-sync-badge" class="font-medium text-emerald-300">Loading one-time Open-Meteo weather snapshot...</span>
+                <span class="hidden md:inline text-slate-500">•</span>
+                <span class="hidden md:inline text-slate-400">Cached for session (no background polling)</span>
+            </div>
+            <div class="text-slate-400 flex items-center gap-1.5">
+                <i class="ph ph-info text-sand-500 text-sm"></i>
+                <span>Tee sheet rates & slots reflect simulated live inventory (commercial POS APIs require private B2B keys).</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation Header -->
+    <header class="bg-fairway-900 text-white sticky top-0 z-30 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                
+                <!-- Brand Identity -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sand-400 to-sand-500 text-fairway-950 flex items-center justify-center shadow-inner">
+                            <i class="ph-fill ph-flag-pennant text-2xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-display font-bold text-xl tracking-tight text-white flex items-center gap-2">
+                                FairwayCast <span class="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-fairway-800 text-sand-400 border border-fairway-700">MN</span>
+                            </h1>
+                            <p class="text-xs text-fairway-100/80">100-Mile Tee Sheet & Micro-Weather Engine</p>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Bookings Button -->
+                    <button onclick="toggleBookingsDrawer()" class="lg:hidden relative flex items-center gap-2 bg-fairway-800 hover:bg-fairway-700 text-white px-3.5 py-2 rounded-xl text-sm font-medium transition border border-fairway-700">
+                        <i class="ph ph-calendar-check text-sand-400 text-lg"></i>
+                        <span>Bookings</span>
+                        <span id="mobile-booking-count" class="bg-sand-500 text-fairway-950 font-bold text-xs px-1.5 py-0.5 rounded-full">0</span>
+                    </button>
+                </div>
+
+                <!-- Location Switcher Bar -->
+                <div class="flex flex-wrap items-center gap-2 bg-fairway-950/60 p-1.5 rounded-2xl border border-fairway-800">
+                    <div class="flex items-center gap-2 px-3 py-1.5 text-sm text-sand-200">
+                        <i class="ph-fill ph-map-pin text-sand-500 text-base"></i>
+                        <span id="current-location-label" class="font-semibold truncate max-w-[180px] sm:max-w-[220px]">St. Cloud, MN (56301)</span>
+                    </div>
+                    
+                    <button onclick="useBrowserLocation()" id="geo-btn" class="flex items-center gap-1.5 bg-fairway-800 hover:bg-fairway-700 active:scale-95 text-white text-xs font-medium px-3 py-2 rounded-xl transition cursor-pointer">
+                        <i class="ph ph-crosshair text-sand-400 text-sm"></i>
+                        <span>Use My Location</span>
+                    </button>
+
+                    <div class="relative flex items-center">
+                        <input type="text" id="city-search-input" placeholder="City or MN Zip (e.g. Brainerd, 55401)" 
+                            class="bg-fairway-900/90 text-white placeholder-slate-400 text-xs rounded-xl pl-3 pr-8 py-2 border border-fairway-700 focus:outline-none focus:border-sand-500 w-48 sm:w-56 transition"
+                            onkeydown="if(event.key==='Enter') handleCustomLocationSearch()">
+                        <button onclick="handleCustomLocationSearch()" title="Search Location" class="absolute right-2 text-sand-400 hover:text-white p-1">
+                            <i class="ph ph-magnifying-glass text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Desktop View Toggle & My Bookings -->
+                <div class="hidden lg:flex items-center gap-3">
+                    <div class="bg-fairway-950/70 p-1 rounded-xl border border-fairway-800 flex items-center">
+                        <button onclick="setViewMode('list')" id="view-list-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sand-500 text-fairway-950 transition">
+                            <i class="ph-bold ph-list-dashes"></i> Tee Sheet
+                        </button>
+                        <button onclick="setViewMode('radar')" id="view-radar-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition">
+                            <i class="ph-bold ph-compass"></i> 100-Mi Radar
+                        </button>
+                    </div>
+
+                    <button onclick="toggleBookingsDrawer()" class="relative flex items-center gap-2 bg-fairway-800 hover:bg-fairway-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition border border-fairway-700 shadow-sm cursor-pointer">
+                        <i class="ph-fill ph-ticket text-sand-400 text-lg"></i>
+                        <span>My Tee Times</span>
+                        <span id="desktop-booking-count" class="bg-sand-500 text-fairway-950 font-bold text-xs px-2 py-0.5 rounded-full">0</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Application Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Top Weather & Playability Outlook Banner -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+            <div class="bg-gradient-to-r from-fairway-900 via-fairway-800 to-fairway-900 px-6 py-4 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 text-sand-400 text-xs font-bold uppercase tracking-wider mb-1">
+                        <i class="ph-fill ph-sun-horizon"></i>
+                        <span id="outlook-date-heading">Golf Weather & Playability Outlook</span>
+                    </div>
+                    <h2 id="outlook-headline" class="font-display text-lg sm:text-xl font-bold text-white">
+                        Loading real-time Central Minnesota meteorological forecast...
+                    </h2>
+                </div>
+                <div id="best-window-pill" class="bg-fairway-950/70 border border-sand-500/40 rounded-xl px-4 py-2.5 flex items-center gap-3 shrink-0">
+                    <div class="w-9 h-9 rounded-lg bg-sand-500/20 text-sand-400 flex items-center justify-center text-xl">
+                        <i class="ph-fill ph-sparkle"></i>
+                    </div>
+                    <div>
+                        <div class="text-[11px] uppercase tracking-wider text-slate-300 font-medium">Prime Tee Window</div>
+                        <div id="best-window-text" class="text-sm font-bold text-sand-300">Calculating...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hourly Weather Strip (7 AM to 6 PM) -->
+            <div class="p-4 bg-slate-50/60 overflow-x-auto">
+                <div id="hourly-outlook-strip" class="grid grid-cols-6 sm:grid-cols-12 gap-2 min-w-[640px]">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Control & Filter Bar -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-5">
+            <!-- Row 1: Date Selector Pills -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <i class="ph-fill ph-calendar-blank text-fairway-700 text-lg"></i>
+                    <span class="text-sm font-bold text-slate-800">Select Round Date</span>
+                </div>
+                <div id="date-pills-container" class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                    <!-- 8 days generated dynamically -->
+                </div>
+            </div>
+
+            <!-- Row 2: Search Radius, Players, Time of Day, Max Rate, Weather & Sort -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                
+                <!-- Radius Slider -->
+                <div class="lg:col-span-2 bg-slate-50 p-3 rounded-xl border border-slate-200/70">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label for="radius-slider" class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                            <i class="ph-bold ph-radar text-fairway-700"></i> Search Radius
+                        </label>
+                        <span id="radius-value-badge" class="text-xs font-extrabold text-fairway-900 bg-sand-200 px-2 py-0.5 rounded-md">100 Miles</span>
+                    </div>
+                    <input type="range" id="radius-slider" min="10" max="100" step="5" value="100" class="w-full cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-slate-400 font-medium mt-1">
+                        <span>10 mi (Local)</span>
+                        <span>50 mi</span>
+                        <span>100 mi (Regional)</span>
+                    </div>
+                </div>
+
+                <!-- Players Filter -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Players</label>
+                    <div class="grid grid-cols-4 gap-1 bg-slate-100 p-1 rounded-xl">
+                        <button onclick="setPlayers(1)" class="player-btn py-1.5 text-xs font-bold rounded-lg transition" data-players="1">1</button>
+                        <button onclick="setPlayers(2)" class="player-btn py-1.5 text-xs font-bold rounded-lg bg-white text-fairway-900 shadow-sm transition" data-players="2">2</button>
+                        <button onclick="setPlayers(3)" class="player-btn py-1.5 text-xs font-bold rounded-lg transition" data-players="3">3</button>
+                        <button onclick="setPlayers(4)" class="player-btn py-1.5 text-xs font-bold rounded-lg transition" data-players="4">4</button>
+                    </div>
+                </div>
+
+                <!-- Time of Day Filter -->
+                <div>
+                    <label for="time-filter" class="block text-xs font-bold text-slate-700 mb-1.5">Time of Day</label>
+                    <select id="time-filter" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:border-fairway-700">
+                        <option value="all">All Tee Times</option>
+                        <option value="morning">Morning (Before 11 AM)</option>
+                        <option value="midday">Midday (11 AM – 3 PM)</option>
+                        <option value="twilight">Twilight (After 3 PM)</option>
+                    </select>
+                </div>
+
+                <!-- Max Green Fee Filter -->
+                <div>
+                    <label for="price-filter" class="block text-xs font-bold text-slate-700 mb-1.5">Max Rate / Player</label>
+                    <select id="price-filter" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:border-fairway-700">
+                        <option value="999">Any Price</option>
+                        <option value="45">Under $45 (Value)</option>
+                        <option value="70">Under $70</option>
+                        <option value="100">Under $100</option>
+                        <option value="150">Under $150</option>
+                    </select>
+                </div>
+
+                <!-- Sort By -->
+                <div>
+                    <label for="sort-select" class="block text-xs font-bold text-slate-700 mb-1.5">Sort Courses By</label>
+                    <select id="sort-select" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:border-fairway-700">
+                        <option value="distance">Closest Distance</option>
+                        <option value="playability">Best Weather Score</option>
+                        <option value="price">Lowest Starting Rate</option>
+                        <option value="earliest">Earliest Tee Time</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Row 3: Quick Toggle Pills & Mobile View Switcher -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="ideal-weather-toggle" onclick="toggleIdealWeatherFilter()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition cursor-pointer">
+                        <i class="ph-fill ph-sun text-amber-500"></i>
+                        <span>Ideal Weather Only (Score 7.5+)</span>
+                    </button>
+
+                    <button id="hot-deal-toggle" onclick="toggleHotDealFilter()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition cursor-pointer">
+                        <i class="ph-fill ph-fire text-rose-500"></i>
+                        <span>Hot Deals Only</span>
+                    </button>
+
+                    <button onclick="resetAllFilters()" class="text-xs font-medium text-slate-500 hover:text-fairway-800 underline px-2 py-1">
+                        Reset Filters
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <span id="results-summary-count" class="text-xs font-bold text-fairway-900 bg-fairway-100 px-3 py-1.5 rounded-full">
+                        Loading courses...
+                    </span>
+                    <!-- Mobile View Switcher -->
+                    <div class="flex lg:hidden bg-slate-100 p-1 rounded-xl">
+                        <button onclick="setViewMode('list')" id="mobile-view-list-btn" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-fairway-900 text-white">List</button>
+                        <button onclick="setViewMode('radar')" id="mobile-view-radar-btn" class="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600">Radar</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW MODE 1: Interactive 100-Mile Course Radar Overview (Hidden by default) -->
+        <section id="radar-view-section" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6">
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h3 class="font-display font-bold text-lg text-fairway-950 flex items-center gap-2">
+                        <i class="ph-fill ph-compass text-fairway-700 text-xl"></i>
+                        100-Mile Course Distance & Bearing Radar
+                    </h3>
+                    <p class="text-xs text-slate-500">Visualizing all matching golf courses relative to <strong id="radar-center-name">St. Cloud, MN</strong>. Click any course pin to inspect tee times.</p>
+                </div>
+                <div class="flex items-center gap-4 text-xs font-medium">
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Ideal Weather (7.5+)</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> Breezy / Fair</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span> Chilly / Rain Risk</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                <!-- Interactive SVG Radar Canvas -->
+                <div class="lg:col-span-2 flex justify-center bg-fairway-950 rounded-2xl p-4 sm:p-6 relative overflow-hidden shadow-inner">
+                    <svg id="course-radar-svg" viewBox="0 0 500 500" class="w-full max-w-[480px] h-auto select-none">
+                        <!-- Concentric Range Rings -->
+                        <circle cx="250" cy="250" r="220" fill="#133326" stroke="#2D6A4F" stroke-width="1.5" stroke-dasharray="4 4" />
+                        <circle cx="250" cy="250" r="165" fill="none" stroke="#245540" stroke-width="1" />
+                        <circle cx="250" cy="250" r="110" fill="none" stroke="#245540" stroke-width="1" />
+                        <circle cx="250" cy="250" r="55" fill="none" stroke="#245540" stroke-width="1" />
+                        
+                        <!-- Crosshairs -->
+                        <line x1="250" y1="20" x2="250" y2="480" stroke="#245540" stroke-width="1" />
+                        <line x1="20" y1="250" x2="480" y2="250" stroke="#245540" stroke-width="1" />
+                        
+                        <!-- Cardinal Labels -->
+                        <text x="250" y="16" text-anchor="middle" fill="#D4A373" font-size="11" font-weight="bold">N (Brainerd Lakes)</text>
+                        <text x="250" y="494" text-anchor="middle" fill="#94a3b8" font-size="10">S (Prior Lake / Hutch)</text>
+                        <text x="486" y="254" text-anchor="end" fill="#94a3b8" font-size="10">E (Twin Cities)</text>
+                        <text x="14" y="254" text-anchor="start" fill="#94a3b8" font-size="10">W (Willmar / Alex)</text>
+
+                        <!-- Ring Distance Labels -->
+                        <text x="254" y="193" fill="#6ee7b7" font-size="9" opacity="0.7">25 mi</text>
+                        <text x="254" y="138" fill="#6ee7b7" font-size="9" opacity="0.7">50 mi</text>
+                        <text x="254" y="83" fill="#6ee7b7" font-size="9" opacity="0.7">75 mi</text>
+                        <text x="254" y="28" fill="#D4A373" font-size="9" font-weight="bold">100 mi</text>
+
+                        <!-- Dynamic Course Pins Group -->
+                        <g id="radar-pins-layer"></g>
+
+                        <!-- Center User Origin -->
+                        <circle cx="250" cy="250" r="7" fill="#D4A373" stroke="#ffffff" stroke-width="2" />
+                    </svg>
+                </div>
+
+                <!-- Selected Radar Course Inspector Card -->
+                <div id="radar-inspector-panel" class="bg-slate-50 rounded-2xl p-5 border border-slate-200 h-full flex flex-col justify-between">
+                    <div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-fairway-700">Course Radar Inspector</span>
+                        <h4 id="radar-course-title" class="font-display font-bold text-xl text-slate-900 mt-1">Select a pin on the radar</h4>
+                        <p id="radar-course-meta" class="text-xs text-slate-500 mt-1">Click any glowing course dot to view distance, bearing, starting rate, and weather-scored tee times.</p>
+                        
+                        <div id="radar-course-details" class="hidden mt-4 space-y-4">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="bg-white p-3 rounded-xl border border-slate-200/80">
+                                    <div class="text-[11px] text-slate-400 font-medium">Distance</div>
+                                    <div id="radar-detail-dist" class="text-base font-extrabold text-fairway-900">-- mi</div>
+                                </div>
+                                <div class="bg-white p-3 rounded-xl border border-slate-200/80">
+                                    <div class="text-[11px] text-slate-400 font-medium">From Rate</div>
+                                    <div id="radar-detail-rate" class="text-base font-extrabold text-fairway-900">$--</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-slate-700 mb-2">Available Tee Times:</div>
+                                <div id="radar-detail-tees" class="flex flex-wrap gap-2"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t border-slate-200 text-xs text-slate-500 flex items-center justify-between">
+                        <span>Showing courses within <strong id="radar-radius-readout">100 mi</strong></span>
+                        <button onclick="setViewMode('list')" class="text-fairway-800 font-bold hover:underline">Back to Full List →</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW MODE 2: Main Course & Tee Time Feed -->
+        <section id="courses-feed-container" class="space-y-4">
+            <!-- Course cards injected dynamically -->
+        </section>
+
+    </main>
+
+    <!-- Booking & Hourly Round Weather Progression Modal -->
+    <div id="booking-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/65 backdrop-blur-sm p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn">
+            
+            <!-- Modal Header -->
+            <div class="bg-fairway-900 text-white px-6 py-5 flex items-start justify-between">
+                <div>
+                    <div class="flex items-center gap-2 text-sand-400 text-xs font-bold uppercase tracking-wider">
+                        <i class="ph-fill ph-flag-pennant"></i>
+                        <span id="modal-course-distance">0.0 miles away</span>
+                    </div>
+                    <h3 id="modal-course-name" class="font-display font-bold text-xl sm:text-2xl text-white mt-0.5">Course Name</h3>
+                    <p id="modal-course-specs" class="text-xs text-fairway-100/80 mt-1">18 Holes • Par 72 • Championship</p>
+                </div>
+                <button onclick="closeBookingModal()" class="text-slate-300 hover:text-white bg-fairway-800 hover:bg-fairway-700 p-2 rounded-xl transition">
+                    <i class="ph-bold ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+                
+                <!-- Selected Tee Time & Weather Summary Card -->
+                <div class="bg-sand-100/70 border border-sand-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-fairway-800">Selected Tee Time</span>
+                        <div class="flex items-baseline gap-2.5 mt-0.5">
+                            <span id="modal-tee-time" class="font-display font-extrabold text-2xl text-fairway-950">8:30 AM</span>
+                            <span id="modal-tee-date" class="text-sm font-medium text-slate-600">Saturday, Nov 21</span>
+                        </div>
+                    </div>
+                    <div id="modal-playability-badge" class="px-4 py-2 rounded-xl border flex items-center gap-3 bg-white">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+
+                <!-- 4-Hour Round Weather Progression (Front 9 vs Back 9) -->
+                <div>
+                    <div class="flex items-center justify-between mb-2.5">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                            <i class="ph-fill ph-cloud-sun text-fairway-700 text-base"></i>
+                            4-Hour On-Course Weather Progression
+                        </h4>
+                        <span class="text-[11px] text-slate-500">Open-Meteo Course Coordinates</span>
+                    </div>
+                    <div id="modal-round-progression" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <!-- 4 hourly cards for Front 9 Start, Turn, Back 9, Clubhouse Finish -->
+                    </div>
+                </div>
+
+                <!-- Golfer & Cart Options -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Number of Golfers</label>
+                        <div class="grid grid-cols-4 gap-1.5 bg-slate-100 p-1 rounded-xl" id="modal-player-selector">
+                            <button type="button" onclick="updateModalPlayers(1)" class="modal-player-btn py-2 text-xs font-bold rounded-lg transition" data-p="1">1</button>
+                            <button type="button" onclick="updateModalPlayers(2)" class="modal-player-btn py-2 text-xs font-bold rounded-lg transition" data-p="2">2</button>
+                            <button type="button" onclick="updateModalPlayers(3)" class="modal-player-btn py-2 text-xs font-bold rounded-lg transition" data-p="3">3</button>
+                            <button type="button" onclick="updateModalPlayers(4)" class="modal-player-btn py-2 text-xs font-bold rounded-lg transition" data-p="4">4</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Cart / Riding Option</label>
+                        <select id="modal-cart-option" onchange="recalculateModalTotal()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-fairway-700">
+                            <option value="included">18-Hole GPS Cart Included</option>
+                            <option value="walk">Walking Rate (-$14 / player)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Golfer Name Input -->
+                <div>
+                    <label for="modal-golfer-name" class="block text-xs font-bold text-slate-700 mb-1.5">Reservation Name</label>
+                    <input type="text" id="modal-golfer-name" value="Alex Anderson" placeholder="Enter lead golfer name" 
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-800 focus:outline-none focus:border-fairway-700">
+                </div>
+
+                <!-- Rate Breakdown Box -->
+                <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-2 text-sm">
+                    <div class="flex justify-between text-slate-600">
+                        <span id="modal-rate-line-label">Green Fee + Cart (2 Players × $58)</span>
+                        <span id="modal-subtotal" class="font-semibold text-slate-800">$116.00</span>
+                    </div>
+                    <div class="flex justify-between text-slate-600">
+                        <span>Online Tee-Time Convenience Fee</span>
+                        <span class="font-semibold text-emerald-700">$0.00 (Free)</span>
+                    </div>
+                    <div class="flex justify-between text-base font-extrabold text-fairway-950 pt-2 border-t border-slate-200">
+                        <span>Total Due at Clubhouse</span>
+                        <span id="modal-grand-total">$116.00</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-3 pt-1">
+                    <button onclick="closeBookingModal()" class="sm:w-1/3 py-3 px-4 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition">
+                        Cancel
+                    </button>
+                    <button onclick="confirmTeeTimeBooking(false)" class="sm:w-1/3 py-3 px-4 rounded-xl bg-fairway-800 hover:bg-fairway-700 text-white font-bold text-sm transition cursor-pointer flex items-center justify-center gap-1.5">
+                        <i class="ph-bold ph-check-circle text-sand-400 text-base"></i>
+                        <span>Confirm Only</span>
+                    </button>
+                    <button onclick="confirmTeeTimeBooking(true)" class="sm:w-1/3 py-3 px-4 rounded-xl bg-fairway-950 hover:bg-fairway-900 text-sand-300 font-bold text-sm shadow-lg shadow-fairway-950/20 flex items-center justify-center gap-1.5 transition cursor-pointer border border-sand-500/40">
+                        <i class="ph-fill ph-pencil-line text-sand-400 text-base"></i>
+                        <span>Book &amp; Scorecard</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive 18-Hole Live Scorecard & Round Tracker Modal -->
+    <div id="scorecard-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/75 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-5xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[94vh]">
+            
+            <!-- Scorecard Header with Live Weather Cross-Reference -->
+            <div class="bg-gradient-to-r from-fairway-950 via-fairway-900 to-fairway-950 text-white px-5 py-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 border-b border-fairway-800">
+                <div>
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <span id="sc-conf-badge" class="bg-sand-500 text-fairway-950 font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider">Conf #FC-000000</span>
+                        <span id="sc-datetime-label" class="text-sand-200 font-medium">Today • 8:15 AM</span>
+                        <span id="sc-weather-pill" class="bg-fairway-800/90 border border-fairway-700 text-emerald-300 px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                            <i class="ph-fill ph-sun text-amber-400"></i> 62°F • 8 mph • Score 8.8/10
+                        </span>
+                    </div>
+                    <h3 id="sc-course-name" class="font-display font-bold text-xl sm:text-2xl text-white mt-1">Course Name Scorecard</h3>
+                    <p id="sc-course-meta" class="text-xs text-fairway-100/80">18 Holes • Par 72 • 6,740 Yards • Rating/Slope 72.4 / 131</p>
+                </div>
+
+                <div class="flex items-center gap-2 self-end md:self-center">
+                    <button id="sc-finish-btn" onclick="finishAndSaveRound()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-fairway-950 font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer">
+                        <i class="ph-bold ph-trophy text-base"></i>
+                        <span>Finish &amp; Save Round</span>
+                    </button>
+                    <button onclick="closeScorecardModal()" class="p-2 rounded-xl bg-fairway-800 hover:bg-fairway-700 text-slate-200 transition cursor-pointer" title="Save & Close">
+                        <i class="ph-bold ph-x text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Live Running Stats Bar (Primary Golfer & Scoring Legend) -->
+            <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-4" id="sc-live-summary-bar">
+                    <!-- Dynamic summary metrics injected here -->
+                </div>
+
+                <!-- Classic Golf Notation Legend -->
+                <div class="flex items-center gap-3 text-[11px] font-semibold text-slate-600">
+                    <span class="flex items-center gap-1"><span class="inline-flex items-center justify-center w-5 h-5 rounded-full border-2 border-amber-500 text-amber-700 font-bold text-[10px]">2</span> Eagle</span>
+                    <span class="flex items-center gap-1"><span class="inline-flex items-center justify-center w-5 h-5 rounded-full border border-emerald-600 text-emerald-700 font-bold text-[10px]">3</span> Birdie</span>
+                    <span class="flex items-center gap-1"><span class="inline-flex items-center justify-center w-5 h-5 border border-sky-600 text-sky-700 font-bold text-[10px]">5</span> Bogey</span>
+                    <span class="flex items-center gap-1"><span class="inline-flex items-center justify-center w-5 h-5 border-2 border-rose-600 text-rose-700 font-bold text-[10px]">6</span> Double+</span>
+                </div>
+            </div>
+
+            <!-- Scrollable Scorecard Workspace -->
+            <div class="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1">
+                
+                <!-- Post-Round Celebration Summary Banner (Shown when round is finished) -->
+                <div id="sc-completed-banner" class="hidden bg-gradient-to-r from-emerald-900 via-fairway-900 to-emerald-900 text-white rounded-2xl p-5 border border-emerald-600/50 shadow-md">
+                    <!-- Populated on round completion -->
+                </div>
+
+                <!-- Nine Selector & Active Hole Quick-Entry Pad -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+                    <!-- Active Hole Tactile Stepper & Primary Golfer Stat Toggles -->
+                    <div class="lg:col-span-7 bg-fairway-50/80 border border-fairway-200 rounded-2xl p-4 flex flex-col justify-between gap-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <button onclick="changeActiveHole(-1)" class="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 font-bold cursor-pointer">
+                                    <i class="ph-bold ph-caret-left"></i>
+                                </button>
+                                <div>
+                                    <span id="sc-active-hole-badge" class="text-xs font-extrabold uppercase tracking-wider text-fairway-800">Hole 1 • Par 4</span>
+                                    <div id="sc-active-hole-sub" class="text-[11px] text-slate-500 font-medium">385 Yards • Handicap Index 7</div>
+                                </div>
+                                <button onclick="changeActiveHole(1)" class="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 font-bold cursor-pointer">
+                                    <i class="ph-bold ph-caret-right"></i>
+                                </button>
+                            </div>
+
+                            <!-- Quick Jump Pills 1-18 -->
+                            <div class="hidden sm:flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200">
+                                <button onclick="setScorecardNineFilter('front')" id="sc-nine-front" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-fairway-900 text-white transition cursor-pointer">Front 9</button>
+                                <button onclick="setScorecardNineFilter('back')" id="sc-nine-back" class="px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer">Back 9</button>
+                                <button onclick="setScorecardNineFilter('all')" id="sc-nine-all" class="px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer">All 18</button>
+                            </div>
+                        </div>
+
+                        <!-- Player Score Steppers for Active Hole -->
+                        <div id="sc-active-hole-players" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <!-- Player stepper cards injected dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Primary Golfer Hole Shot Stats (Fairway Hit, GIR, Putts) -->
+                    <div class="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between gap-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                <i class="ph-fill ph-chart-bar text-fairway-700 text-base"></i>
+                                Lead Golfer Hole Stats
+                            </span>
+                            <span id="sc-lead-player-tag" class="text-[11px] font-bold text-fairway-800 bg-fairway-100 px-2 py-0.5 rounded-md">You</span>
+                        </div>
+
+                        <div id="sc-hole-stats-controls" class="grid grid-cols-3 gap-2">
+                            <!-- Fairway, GIR, Putts buttons injected dynamically -->
+                        </div>
+
+                        <div id="sc-lead-round-stat-totals" class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-center text-xs">
+                            <!-- Cumulative Fairways %, GIR %, Total Putts -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full 18-Hole Interactive Scorecard Grid -->
+                <div class="space-y-4" id="sc-tables-container">
+                    <!-- Front 9 (OUT) and Back 9 (IN) tables rendered here -->
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved 'My Bookings' Slide-Over Drawer -->
+    <div id="bookings-drawer" class="fixed inset-0 z-50 hidden justify-end bg-slate-950/60 backdrop-blur-xs">
+        <div class="bg-white w-full max-w-md h-full shadow-2xl flex flex-col justify-between overflow-hidden">
+            <div class="bg-fairway-900 text-white px-6 py-5 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <i class="ph-fill ph-ticket text-sand-400 text-2xl"></i>
+                    <button onclick="confirmTeeTimeBooking(true)" class="sm:w-2/3 py-3 px-6 rounded-xl bg-fairway-900 hover:bg-fairway-800 text-white font-bold text-sm shadow-lg shadow-fairway-900/20 flex items-center justify-center gap-2 transition cursor-pointer">
+                        <i class="ph-bold ph-check-circle text-sand-400 text-lg"></i>
+                        <span>Lock In Tee Time Reservation</span>
+                    </button>
+                </div>
+                </div>
+                <button onclick="toggleBookingsDrawer()" class="p-2 rounded-xl bg-fairway-800 hover:bg-fairway-700 text-slate-200">
+                    <i class="ph-bold ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <div id="bookings-list-container" class="flex-1 overflow-y-auto p-5 space-y-3 bg-slate-50">
+                <!-- Saved bookings rendered here -->
+            </div>
+
+            <div class="p-4 bg-white border-t border-slate-200 text-center">
+                <button onclick="toggleBookingsDrawer()" class="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition">
+                    Continue Browsing Courses
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Non-intrusive Toast Notification -->
+    <div id="toast-notification" class="fixed bottom-5 right-5 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-fairway-950 text-white px-4 py-3 rounded-2xl shadow-xl border border-fairway-700 flex items-center gap-3 text-sm font-medium">
+            <i id="toast-icon" class="ph-fill ph-check-circle text-emerald-400 text-xl"></i>
+            <span id="toast-message">Notification message</span>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================================
+        // 1. REAL MINNESOTA GOLF COURSE DATABASE (Within 100 Miles of St. Cloud)
+        // =========================================================================
+        const GOLF_COURSES_DB = [
+            {
+                id: "wapicada",
+                name: "Wapicada Golf Club",
+                city: "Sauk Rapids, MN",
+                lat: 45.6052,
+                lon: -94.1421,
+                holes: 18,
+                par: 72,
+                rating: "72.4 / 131",
+                tier: "Championship Public",
+                baseWeekday: 49,
+                baseWeekend: 62,
+                amenities: ["GPS Carts", "Driving Range", "Clubhouse Grill"],
+                badge: "Local Favorite"
+            },
+            {
+                id: "territory",
+                name: "Territory Golf Club",
+                city: "St. Cloud, MN",
+                lat: 45.5298,
+                lon: -94.0884,
+                holes: 18,
+                par: 72,
+                rating: "73.8 / 136",
+                tier: "Links & Prairie",
+                baseWeekday: 58,
+                baseWeekend: 74,
+                amenities: ["Prairie Links", "Practice Greens", "Bar & Patio"],
+                badge: "Top Rated"
+            },
+            {
+                id: "blackberry-ridge",
+                name: "Blackberry Ridge Golf Club",
+                city: "Sartell, MN",
+                lat: 45.6265,
+                lon: -94.2255,
+                holes: 18,
+                par: 72,
+                rating: "72.9 / 133",
+                tier: "Parkland Public",
+                baseWeekday: 52,
+                baseWeekend: 66,
+                amenities: ["GPS Carts", "Event Center", "Pro Shop"],
+                badge: "Fast Greens"
+            },
+            {
+                id: "boulder-ridge",
+                name: "Boulder Ridge Golf Club",
+                city: "St. Cloud, MN",
+                lat: 45.5241,
+                lon: -94.2219,
+                holes: 18,
+                par: 70,
+                rating: "69.5 / 121",
+                tier: "Executive / Scenic",
+                baseWeekday: 38,
+                baseWeekend: 46,
+                amenities: ["Walkable", "Practice Range", "Snack Bar"],
+                badge: "Great Value"
+            },
+            {
+                id: "kimball",
+                name: "Kimball Golf Club",
+                city: "Kimball, MN",
+                lat: 45.3264,
+                lon: -94.2981,
+                holes: 18,
+                par: 71,
+                rating: "70.1 / 123",
+                tier: "Public Parkland",
+                baseWeekday: 39,
+                baseWeekend: 48,
+                amenities: ["Riding Carts", "Full Bar", "Putting Green"],
+                badge: null
+            },
+            {
+                id: "albion-ridges",
+                name: "Albion Ridges Golf Course",
+                city: "Annandale, MN",
+                lat: 45.2215,
+                lon: -94.0933,
+                holes: 27,
+                par: 72,
+                rating: "72.6 / 130",
+                tier: "27-Hole Facility",
+                baseWeekday: 46,
+                baseWeekend: 59,
+                amenities: ["3 Nine-Hole Loops", "Driving Range", "Grill"],
+                badge: "27 Holes"
+            },
+            {
+                id: "pebble-creek",
+                name: "Pebble Creek Golf Club",
+                city: "Becker, MN",
+                lat: 45.4021,
+                lon: -93.8825,
+                holes: 18,
+                par: 72,
+                rating: "73.2 / 134",
+                tier: "Championship Municipal",
+                baseWeekday: 54,
+                baseWeekend: 69,
+                amenities: ["Bentgrass Fairways", "Range", "Restaurant"],
+                badge: "Player's Choice"
+            },
+            {
+                id: "fox-hollow",
+                name: "Fox Hollow Golf Club",
+                city: "St. Michael, MN",
+                lat: 45.2134,
+                lon: -93.6672,
+                holes: 18,
+                par: 72,
+                rating: "72.7 / 132",
+                tier: "Crow River Valley",
+                baseWeekday: 56,
+                baseWeekend: 72,
+                amenities: ["River Views", "GPS Carts", "Taproom"],
+                badge: null
+            },
+            {
+                id: "little-crow",
+                name: "Little Crow Country Club",
+                city: "Spicer, MN",
+                lat: 45.2618,
+                lon: -94.9389,
+                holes: 27,
+                par: 72,
+                rating: "72.5 / 129",
+                tier: "Resort & Public",
+                baseWeekday: 51,
+                baseWeekend: 65,
+                amenities: ["27 Holes", "Resort Dining", "Practice Facility"],
+                badge: "Lakes Area"
+            },
+            {
+                id: "eagle-creek",
+                name: "Eagle Creek Golf Club",
+                city: "Willmar, MN",
+                lat: 45.1444,
+                lon: -95.0397,
+                holes: 18,
+                par: 72,
+                rating: "71.8 / 127",
+                tier: "Public Parkland",
+                baseWeekday: 44,
+                baseWeekend: 55,
+                amenities: ["Tree-Lined", "Driving Range", "Clubhouse"],
+                badge: null
+            },
+            {
+                id: "links-northfork",
+                name: "The Links at Northfork",
+                city: "Ramsey, MN",
+                lat: 45.2647,
+                lon: -93.4578,
+                holes: 18,
+                par: 72,
+                rating: "74.1 / 137",
+                tier: "Scottish Links Style",
+                baseWeekday: 64,
+                baseWeekend: 82,
+                amenities: ["True Links", "Fescue Rough", "Full Restaurant"],
+                badge: "Links Classic"
+            },
+            {
+                id: "rush-creek",
+                name: "Rush Creek Golf Club",
+                city: "Maple Grove, MN",
+                lat: 45.1342,
+                lon: -93.4819,
+                holes: 18,
+                par: 72,
+                rating: "75.2 / 141",
+                tier: "Premier Championship",
+                baseWeekday: 89,
+                baseWeekend: 115,
+                amenities: ["Tour Conditioning", "MacGregor's Grill", "Caddie Program"],
+                badge: "Championship"
+            },
+            {
+                id: "edinburgh-usa",
+                name: "Edinburgh USA",
+                city: "Brooklyn Park, MN",
+                lat: 45.1095,
+                lon: -93.3372,
+                holes: 18,
+                par: 72,
+                rating: "74.8 / 139",
+                tier: "RTJ II Design",
+                baseWeekday: 79,
+                baseWeekend: 98,
+                amenities: ["Island 17th Green", "Historic Manor", "Range"],
+                badge: "RTJ II Design"
+            },
+            {
+                id: "baker-national",
+                name: "Baker National Golf Course",
+                city: "Medina, MN",
+                lat: 45.0389,
+                lon: -93.6353,
+                holes: 18,
+                par: 72,
+                rating: "73.9 / 135",
+                tier: "Three Rivers Park",
+                baseWeekday: 62,
+                baseWeekend: 76,
+                amenities: ["Wildlife Preserve", "9-Hole Exec", "Grill"],
+                badge: null
+            },
+            {
+                id: "legends-club",
+                name: "Legends Club",
+                city: "Prior Lake, MN",
+                lat: 44.6914,
+                lon: -93.4336,
+                holes: 18,
+                par: 72,
+                rating: "74.6 / 138",
+                tier: "Upscale Daily Fee",
+                baseWeekday: 84,
+                baseWeekend: 108,
+                amenities: ["Stone Clubhouse", "GPS Carts", "Fine Dining"],
+                badge: "Premier"
+            },
+            {
+                id: "stoneridge",
+                name: "StoneRidge Golf Club",
+                city: "Stillwater, MN",
+                lat: 44.9781,
+                lon: -92.8634,
+                holes: 18,
+                par: 72,
+                rating: "75.0 / 140",
+                tier: "Links / Championship",
+                baseWeekday: 86,
+                baseWeekend: 112,
+                amenities: ["Bentgrass Tees", "Practice Park", "Pub"],
+                badge: "Top 10 Public"
+            },
+            {
+                id: "craguns-legacy",
+                name: "Cragun's Legacy Courses (Dutch 27)",
+                city: "Brainerd, MN",
+                lat: 46.4139,
+                lon: -94.3414,
+                holes: 27,
+                par: 72,
+                rating: "74.9 / 142",
+                tier: "Lehman Resort Design",
+                baseWeekday: 95,
+                baseWeekend: 125,
+                amenities: ["Audubon Sanctuary", "Resort Stay", "GPS Fleet"],
+                badge: "Brainerd Resort"
+            },
+            {
+                id: "maddens-pine-beach",
+                name: "Madden's Pine Beach East",
+                city: "Brainerd, MN",
+                lat: 46.3956,
+                lon: -94.3558,
+                holes: 18,
+                par: 72,
+                rating: "71.9 / 128",
+                tier: "Historic Resort",
+                baseWeekday: 78,
+                baseWeekend: 96,
+                amenities: ["Gull Lake Views", "Historic Par 6", "Resort Dining"],
+                badge: "Classic"
+            },
+            {
+                id: "grand-view-pines",
+                name: "Grand View Lodge – The Pines",
+                city: "Nisswa, MN",
+                lat: 46.5025,
+                lon: -94.2986,
+                holes: 27,
+                par: 72,
+                rating: "74.5 / 139",
+                tier: "Northwoods Resort",
+                baseWeekday: 105,
+                baseWeekend: 135,
+                amenities: ["Towering Pines", "Luxury Clubhouse", "Practice Park"],
+                badge: "Northwoods"
+            },
+            {
+                id: "deacons-lodge",
+                name: "Deacon's Lodge (Breezy Point)",
+                city: "Breezy Point, MN",
+                lat: 46.6083,
+                lon: -94.2411,
+                holes: 18,
+                par: 72,
+                rating: "75.3 / 143",
+                tier: "Arnold Palmer Signature",
+                baseWeekday: 110,
+                baseWeekend: 139,
+                amenities: ["Palmer Design", "Wetland Carries", "Palmer's Grille"],
+                badge: "Palmer Signature"
+            }
+        ];
+
+        // Preset Minnesota Locations for quick city/zip resolution
+        const MN_LOCATION_PRESETS = {
+            "st. cloud": { name: "St. Cloud, MN (56301)", lat: 45.5579, lon: -94.1632 },
+            "saint cloud": { name: "St. Cloud, MN (56301)", lat: 45.5579, lon: -94.1632 },
+            "56301": { name: "St. Cloud, MN (56301)", lat: 45.5579, lon: -94.1632 },
+            "56303": { name: "St. Cloud West, MN (56303)", lat: 45.5521, lon: -94.2120 },
+            "56379": { name: "Sauk Rapids, MN (56379)", lat: 45.5922, lon: -94.1647 },
+            "56377": { name: "Sartell, MN (56377)", lat: 45.6216, lon: -94.2069 },
+            "minneapolis": { name: "Minneapolis, MN (55401)", lat: 44.9778, lon: -93.2650 },
+            "55401": { name: "Minneapolis, MN (55401)", lat: 44.9778, lon: -93.2650 },
+            "st. paul": { name: "St. Paul, MN (55101)", lat: 44.9537, lon: -93.0900 },
+            "55101": { name: "St. Paul, MN (55101)", lat: 44.9537, lon: -93.0900 },
+            "brainerd": { name: "Brainerd, MN (56401)", lat: 46.3580, lon: -94.2008 },
+            "56401": { name: "Brainerd, MN (56401)", lat: 46.3580, lon: -94.2008 },
+            "willmar": { name: "Willmar, MN (56201)", lat: 45.1219, lon: -95.0433 },
+            "56201": { name: "Willmar, MN (56201)", lat: 45.1219, lon: -95.0433 },
+            "maple grove": { name: "Maple Grove, MN (55369)", lat: 45.0725, lon: -93.4558 },
+            "55369": { name: "Maple Grove, MN (55369)", lat: 45.0725, lon: -93.4558 },
+            "alexandria": { name: "Alexandria, MN (56308)", lat: 45.8852, lon: -95.3775 },
+            "56308": { name: "Alexandria, MN (56308)", lat: 45.8852, lon: -95.3775 }
+        };
+
+        // =========================================================================
+        // 2. APPLICATION STATE
+        // =========================================================================
+        const appState = {
+            userLocation: {
+                name: "St. Cloud, MN (56301)",
+                lat: 45.5579,
+                lon: -94.1632
+            },
+            selectedDateIndex: 0, // 0 = Today, 1 = Tomorrow, etc.
+            datesList: [],
+            radiusMiles: 100,
+            players: 2,
+            timeOfDay: "all",
+            maxPrice: 999,
+            sortBy: "distance",
+            idealWeatherOnly: false,
+            hotDealsOnly: false,
+            viewMode: "list", // 'list' or 'radar'
+            hourlyWeatherByDate: {}, // Keyed by YYYY-MM-DD -> array of 24 hourly objects (populated once per location)
+            weatherCacheKey: null,   // Tracks lat,lon of the one-time pull so it never re-polls unnecessarily
+            weatherFetchedAt: null,  // Formatted timestamp of the one-time weather pull
+            weatherSourceLive: false,
+            coursesWithInventory: [],
+            activeBookingSelection: null,
+            savedBookings: [],
+            activeScorecardCode: null,
+            activeHoleNumber: 1,
+            scorecardNineView: "all"
+        };
+
+        // =========================================================================
+        // 3. ONE-TIME WEATHER SNAPSHOT & CACHED CROSS-REFERENCE ENGINE
+        // =========================================================================
+        function buildUpcomingDatesList() {
+            const list = [];
+            const now = new Date();
+            for (let i = 0; i < 8; i++) {
+                const d = new Date(now);
+                d.setDate(now.getDate() + i);
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, "0");
+                const dd = String(d.getDate()).padStart(2, "0");
+                const isoDate = `${yyyy}-${mm}-${dd}`;
+                const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                const label = i === 0
+                    ? `Today, ${monthNames[d.getMonth()]} ${d.getDate()}`
+                    : (i === 1
+                        ? `Tomorrow, ${monthNames[d.getMonth()]} ${d.getDate()}`
+                        : `${dayNames[d.getDay()]}, ${monthNames[d.getMonth()]} ${d.getDate()}`);
+
+                list.push({
+                    index: i,
+                    isoDate,
+                    shortDay: i === 0 ? "Today" : (i === 1 ? "Tmrw" : dayNames[d.getDay()]),
+                    shortDate: `${monthNames[d.getMonth()]} ${d.getDate()}`,
+                    label,
+                    isWeekend: d.getDay() === 0 || d.getDay() === 6
+                });
+            }
+            appState.datesList = list;
+        }
+
+        function decodeWeatherCode(code) {
+            if (code === 0) return { text: "Clear Sky", icon: "ph-sun" };
+            if (code === 1 || code === 2) return { text: "Mostly Sunny", icon: "ph-sun-dim" };
+            if (code === 3) return { text: "Overcast", icon: "ph-cloud" };
+            if (code === 45 || code === 48) return { text: "Morning Fog", icon: "ph-cloud-fog" };
+            if (code >= 51 && code <= 67) return { text: "Light Rain", icon: "ph-cloud-rain" };
+            if (code >= 71 && code <= 77) return { text: "Snow Flurries", icon: "ph-snowflake" };
+            if (code >= 80 && code <= 82) return { text: "Passing Showers", icon: "ph-cloud-rain" };
+            if (code >= 95) return { text: "Thunderstorms", icon: "ph-cloud-lightning" };
+            return { text: "Partly Cloudy", icon: "ph-cloud-sun" };
+        }
+
+        function calculateGolfPlayabilityScore(tempF, windMph, precipProb, weatherCode) {
+            let score = 10.0;
+            // Ideal golf temperature band: 64°F – 78°F
+            if (tempF < 64) {
+                score -= Math.min(4.2, (64 - tempF) * 0.13);
+            } else if (tempF > 80) {
+                score -= Math.min(3.0, (tempF - 80) * 0.16);
+            }
+            // Wind penalty above 9 mph
+            if (windMph > 9) {
+                score -= Math.min(2.8, (windMph - 9) * 0.16);
+            }
+            // Precipitation probability & active precipitation penalty
+            score -= (precipProb / 100) * 4.5;
+            if ((weatherCode >= 51 && weatherCode <= 99)) {
+                score -= 1.8;
+            }
+            return Math.max(1.0, Math.min(10.0, Number(score.toFixed(1))));
+        }
+
+        function buildFallbackSeasonalForecast() {
+            // Deterministic fallback if offline or API blocked
+            const map = {};
+            appState.datesList.forEach((dObj, dIdx) => {
+                const hours = [];
+                for (let h = 0; h < 24; h++) {
+                    const diurnalCurve = Math.sin(((h - 6) / 14) * Math.PI);
+                    const baseTemp = 44 + (dIdx % 3) * 3 + Math.round(Math.max(-4, diurnalCurve * 14));
+                    const wind = 7 + ((h + dIdx * 2) % 9);
+                    const precip = (dIdx === 3 && h >= 13 && h <= 16) ? 45 : 10;
+                    const code = precip > 30 ? 61 : (h % 3 === 0 ? 2 : 0);
+                    const decoded = decodeWeatherCode(code);
+                    hours.push({
+                        hour: h,
+                        temp: baseTemp,
+                        wind,
+                        precipProb: precip,
+                        weatherCode: code,
+                        conditionText: decoded.text,
+                        icon: decoded.icon,
+                        score: calculateGolfPlayabilityScore(baseTemp, wind, precip, code)
+                    });
+                }
+                map[dObj.isoDate] = hours;
+            });
+            return map;
+        }
+
+        async function fetchOneTimeWeatherSnapshot(forceRefresh = false) {
+            const { lat, lon } = appState.userLocation;
+            const locationKey = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+
+            // Guard: Skip network call if we already pulled the 8-day weather snapshot for this location
+            if (!forceRefresh && appState.weatherCacheKey === locationKey && Object.keys(appState.hourlyWeatherByDate).length > 0) {
+                return;
+            }
+
+            const badgeEl = document.getElementById("weather-sync-badge");
+            badgeEl.textContent = "Pulling one-time 8-day Open-Meteo forecast...";
+
+            try {
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=8`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Weather fetch failed");
+                const data = await response.json();
+
+                const grouped = {};
+                const times = data.hourly.time || [];
+                for (let i = 0; i < times.length; i++) {
+                    const [datePart, timePart] = times[i].split("T");
+                    const hourNum = parseInt(timePart.split(":")[0], 10);
+                    if (!grouped[datePart]) grouped[datePart] = [];
+
+                    const temp = Math.round(data.hourly.temperature_2m[i]);
+                    const wind = Math.round(data.hourly.wind_speed_10m[i]);
+                    const precipProb = data.hourly.precipitation_probability[i] ?? 0;
+                    const weatherCode = data.hourly.weather_code[i] ?? 0;
+                    const decoded = decodeWeatherCode(weatherCode);
+
+                    grouped[datePart].push({
+                        hour: hourNum,
+                        temp,
+                        wind,
+                        precipProb,
+                        weatherCode,
+                        conditionText: decoded.text,
+                        icon: decoded.icon,
+                        score: calculateGolfPlayabilityScore(temp, wind, precipProb, weatherCode)
+                    });
+                }
+
+                appState.hourlyWeatherByDate = grouped;
+                appState.weatherSourceLive = true;
+            } catch (err) {
+                appState.hourlyWeatherByDate = buildFallbackSeasonalForecast();
+                appState.weatherSourceLive = false;
+            }
+
+            const now = new Date();
+            const formattedTime = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+            appState.weatherCacheKey = locationKey;
+            appState.weatherFetchedAt = formattedTime;
+
+            badgeEl.textContent = appState.weatherSourceLive
+                ? `Weather Snapshot Loaded • ${formattedTime} (One-Time Pull)`
+                : `Seasonal Forecast Snapshot • ${formattedTime} (Offline Cache)`;
+        }
+
+        function getCachedHourWeather(isoDate, hour) {
+            const dayArr = appState.hourlyWeatherByDate[isoDate];
+            if (!dayArr || dayArr.length === 0) {
+                return { hour, temp: 58, wind: 8, precipProb: 10, weatherCode: 1, conditionText: "Mostly Sunny", icon: "ph-sun-dim", score: 8.4 };
+            }
+            return dayArr.find(item => item.hour === hour) || dayArr[Math.min(hour, dayArr.length - 1)];
+        }
+
+        // =========================================================================
+        // 4. HAVERSINE DISTANCE, BEARING & CACHED TEE-SHEET INVENTORY ENGINE
+        // =========================================================================
+        function calculateHaversineMiles(lat1, lon1, lat2, lon2) {
+            const R = 3958.8; // Earth radius in miles
+            const toRad = deg => (deg * Math.PI) / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        function calculateBearingDegrees(lat1, lon1, lat2, lon2) {
+            const toRad = deg => (deg * Math.PI) / 180;
+            const toDeg = rad => (rad * 180) / Math.PI;
+            const dLon = toRad(lon2 - lon1);
+            const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+            const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+                      Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+            return (toDeg(Math.atan2(y, x)) + 360) % 360;
+        }
+
+        function formatHourMinuteLabel(hour, minute) {
+            const suffix = hour >= 12 ? "PM" : "AM";
+            const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+            return `${displayHour}:${String(minute).padStart(2, "0")} ${suffix}`;
+        }
+
+        function buildCoursesWithCachedWeather() {
+            const dateObj = appState.datesList[appState.selectedDateIndex];
+            const { lat, lon } = appState.userLocation;
+
+            appState.coursesWithInventory = GOLF_COURSES_DB.map((course, cIdx) => {
+                const distanceMiles = calculateHaversineMiles(lat, lon, course.lat, course.lon);
+                const bearingDeg = calculateBearingDegrees(lat, lon, course.lat, course.lon);
+                const baseRate = dateObj.isWeekend ? course.baseWeekend : course.baseWeekday;
+
+                // Deterministic tee time slots from 7:30 AM through 5:00 PM cross-referenced against cached weather
+                const candidateHours = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+                const slots = [];
+                candidateHours.forEach((hr, hIdx) => {
+                    if ((cIdx + hIdx + appState.selectedDateIndex) % 3 === 0) return; // Realistic tee-sheet spacing
+                    const minute = ((cIdx * 15 + hIdx * 15) % 4) * 15;
+                    const weather = getCachedHourWeather(dateObj.isoDate, hr);
+
+                    // Dynamic rate curve (morning prime, midday standard, twilight discount)
+                    let rate = baseRate;
+                    if (hr >= 15) rate = Math.round(baseRate * 0.72);
+                    else if (hr >= 12) rate = Math.round(baseRate * 0.9);
+
+                    const isHotDeal = (cIdx + hr + appState.selectedDateIndex) % 5 === 0;
+                    if (isHotDeal) rate = Math.max(25, Math.round(rate * 0.78));
+
+                    const spotsLeft = 2 + ((cIdx + hr) % 3); // 2 to 4 spots available
+
+                    slots.push({
+                        id: `${course.id}-${hr}-${minute}`,
+                        hour: hr,
+                        minute,
+                        timeLabel: formatHourMinuteLabel(hr, minute),
+                        rate,
+                        originalRate: baseRate,
+                        isHotDeal,
+                        spotsLeft,
+                        weather
+                    });
+                });
+
+                return {
+                    ...course,
+                    distanceMiles,
+                    bearingDeg,
+                    slots
+                };
+            });
+        }
+
+        // =========================================================================
+        // 5. LOCATION SWITCHING (TRIGGERS ONE-TIME PULL FOR NEW LOCATION)
+        // =========================================================================
+        async function updateUserLocation(name, lat, lon) {
+            appState.userLocation = { name, lat, lon };
+            document.getElementById("current-location-label").textContent = name;
+            document.getElementById("radar-center-name").textContent = name;
+
+            // Fetch a fresh one-time 8-day weather snapshot for the new center location
+            await fetchOneTimeWeatherSnapshot(true);
+            refreshAllViewsFromCache();
+        }
+
+        function useBrowserLocation() {
+            if (!navigator.geolocation) {
+                showToast("Geolocation is not supported by your browser.", "warning");
+                return;
+            }
+            const btn = document.getElementById("geo-btn");
+            btn.innerHTML = `<i class="ph ph-spinner animate-spin text-sand-400"></i><span>Locating...</span>`;
+
+            navigator.geolocation.getCurrentPosition(
+                async pos => {
+                    const { latitude, longitude } = pos.coords;
+                    btn.innerHTML = `<i class="ph ph-crosshair text-sand-400 text-sm"></i><span>Use My Location</span>`;
+                    await updateUserLocation(`My GPS (${latitude.toFixed(2)}, ${longitude.toFixed(2)})`, latitude, longitude);
+                    showToast("Updated to your GPS location & loaded one-time weather snapshot.");
+                },
+                () => {
+                    btn.innerHTML = `<i class="ph ph-crosshair text-sand-400 text-sm"></i><span>Use My Location</span>`;
+                    showToast("Location permission denied. Using St. Cloud, MN.", "warning");
+                },
+                { timeout: 8000 }
+            );
+        }
+
+        async function handleCustomLocationSearch() {
+            const input = document.getElementById("city-search-input");
+            const query = input.value.trim().toLowerCase();
+            if (!query) return;
+
+            if (MN_LOCATION_PRESETS[query]) {
+                const preset = MN_LOCATION_PRESETS[query];
+                await updateUserLocation(preset.name, preset.lat, preset.lon);
+                showToast(`Centered on ${preset.name}`);
+                input.value = "";
+                return;
+            }
+
+            // Fallback geocoding lookup via Open-Meteo Geocoding API
+            try {
+                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`);
+                const data = await res.json();
+                if (data.results && data.results.length > 0) {
+                    const hit = data.results[0];
+                    const label = `${hit.name}, ${hit.admin1 || hit.country_code}`;
+                    await updateUserLocation(label, hit.latitude, hit.longitude);
+                    showToast(`Centered on ${label}`);
+                    input.value = "";
+                    return;
+                }
+            } catch (e) { /* Ignore network failure */ }
+
+            showToast("Location not found. Try 'Brainerd', 'Minneapolis', or '56301'.", "warning");
+        }
+
+        // =========================================================================
+        // 6. UI RENDERING (ALL READS INSTANTANEOUSLY FROM ONE-TIME WEATHER CACHE)
+        // =========================================================================
+        function refreshAllViewsFromCache() {
+            buildCoursesWithCachedWeather();
+            renderDatePills();
+            renderWeatherOutlookBanner();
+            applyFilters();
+        }
+
+        function renderDatePills() {
+            const container = document.getElementById("date-pills-container");
+            container.innerHTML = appState.datesList.map(d => {
+                const isSelected = d.index === appState.selectedDateIndex;
+                const noonWeather = getCachedHourWeather(d.isoDate, 12);
+                return `
+                    <button onclick="selectDate(${d.index})" class="shrink-0 px-3.5 py-2 rounded-xl border text-left transition cursor-pointer ${
+                        isSelected
+                            ? "bg-fairway-900 text-white border-fairway-900 shadow-sm"
+                            : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                    }">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-extrabold">${d.shortDay}</span>
+                            <i class="ph-fill ${noonWeather.icon} text-xs ${isSelected ? "text-sand-400" : "text-amber-500"}"></i>
+                        </div>
+                        <div class="text-[11px] ${isSelected ? "text-fairway-100" : "text-slate-500"}">${d.shortDate} • ${noonWeather.temp}°</div>
+                    </button>
+                `;
+            }).join("");
+        }
+
+        function selectDate(index) {
+            appState.selectedDateIndex = index;
+            // Instantaneous switch using the already-cached 8-day weather snapshot (zero API calls)
+            refreshAllViewsFromCache();
+        }
+
+        function renderWeatherOutlookBanner() {
+            const dateObj = appState.datesList[appState.selectedDateIndex];
+            document.getElementById("outlook-date-heading").textContent = `Golf Weather & Playability Outlook • ${dateObj.label}`;
+
+            const golfHours = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+            const hourlyItems = golfHours.map(hr => getCachedHourWeather(dateObj.isoDate, hr));
+
+            // Find best 2-hour playability window
+            let bestItem = hourlyItems[0];
+            hourlyItems.forEach(item => {
+                if (item.score > bestItem.score) bestItem = item;
+            });
+
+            const highTemp = Math.max(...hourlyItems.map(i => i.temp));
+            const avgWind = Math.round(hourlyItems.reduce((s, i) => s + i.wind, 0) / hourlyItems.length);
+            document.getElementById("outlook-headline").textContent =
+                `High of ${highTemp}°F with ${avgWind} mph average winds around ${appState.userLocation.name}`;
+            document.getElementById("best-window-text").textContent =
+                `${formatHourMinuteLabel(bestItem.hour, 0)} (${bestItem.temp}°F • Score ${bestItem.score}/10)`;
+
+            const strip = document.getElementById("hourly-outlook-strip");
+            strip.innerHTML = hourlyItems.map(item => {
+                const scoreColor = item.score >= 7.5
+                    ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                    : (item.score >= 5.5 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200");
+
+                return `
+                    <div class="bg-white rounded-xl p-2 border border-slate-200/80 text-center flex flex-col items-center justify-between gap-1">
+                        <span class="text-[10px] font-bold text-slate-500">${formatHourMinuteLabel(item.hour, 0).replace(":00 ", "")}</span>
+                        <i class="ph-fill ${item.icon} text-lg text-amber-500"></i>
+                        <span class="text-xs font-extrabold text-slate-800">${item.temp}°</span>
+                        <span class="text-[9px] text-slate-400">${item.wind}mph</span>
+                        <span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${scoreColor}">${item.score}</span>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        // =========================================================================
+        // 7. FILTERING, SORTING & LIST / RADAR RENDERING
+        // =========================================================================
+        function setPlayers(count) {
+            appState.players = count;
+            document.querySelectorAll(".player-btn").forEach(btn => {
+                const active = Number(btn.dataset.players) === count;
+                btn.className = active
+                    ? "player-btn py-1.5 text-xs font-bold rounded-lg bg-white text-fairway-900 shadow-sm transition"
+                    : "player-btn py-1.5 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 transition";
+            });
+            applyFilters();
+        }
+
+        function toggleIdealWeatherFilter() {
+            appState.idealWeatherOnly = !appState.idealWeatherOnly;
+            const btn = document.getElementById("ideal-weather-toggle");
+            btn.className = appState.idealWeatherOnly
+                ? "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-600 bg-emerald-50 text-emerald-900 transition cursor-pointer"
+                : "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition cursor-pointer";
+            applyFilters();
+        }
+
+        function toggleHotDealFilter() {
+            appState.hotDealsOnly = !appState.hotDealsOnly;
+            const btn = document.getElementById("hot-deal-toggle");
+            btn.className = appState.hotDealsOnly
+                ? "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-rose-500 bg-rose-50 text-rose-900 transition cursor-pointer"
+                : "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition cursor-pointer";
+            applyFilters();
+        }
+
+        function resetAllFilters() {
+            appState.radiusMiles = 100;
+            appState.timeOfDay = "all";
+            appState.maxPrice = 999;
+            appState.sortBy = "distance";
+            appState.idealWeatherOnly = false;
+            appState.hotDealsOnly = false;
+
+            document.getElementById("radius-slider").value = 100;
+            document.getElementById("radius-value-badge").textContent = "100 Miles";
+            document.getElementById("time-filter").value = "all";
+            document.getElementById("price-filter").value = "999";
+            document.getElementById("sort-select").value = "distance";
+
+            document.getElementById("ideal-weather-toggle").className =
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition cursor-pointer";
+            document.getElementById("hot-deal-toggle").className =
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition cursor-pointer";
+
+            applyFilters();
+        }
+
+        function setViewMode(mode) {
+            appState.viewMode = mode;
+            const radarSec = document.getElementById("radar-view-section");
+            const feedSec = document.getElementById("courses-feed-container");
+
+            if (mode === "radar") {
+                radarSec.classList.remove("hidden");
+                feedSec.classList.add("hidden");
+                document.getElementById("view-radar-btn").className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sand-500 text-fairway-950 transition";
+                document.getElementById("view-list-btn").className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition";
+                document.getElementById("mobile-view-radar-btn").className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-fairway-900 text-white";
+                document.getElementById("mobile-view-list-btn").className = "px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600";
+            } else {
+                radarSec.classList.add("hidden");
+                feedSec.classList.remove("hidden");
+                document.getElementById("view-list-btn").className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sand-500 text-fairway-950 transition";
+                document.getElementById("view-radar-btn").className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition";
+                document.getElementById("mobile-view-list-btn").className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-fairway-900 text-white";
+                document.getElementById("mobile-view-radar-btn").className = "px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600";
+            }
+        }
+
+        function applyFilters() {
+            appState.radiusMiles = Number(document.getElementById("radius-slider").value);
+            appState.timeOfDay = document.getElementById("time-filter").value;
+            appState.maxPrice = Number(document.getElementById("price-filter").value);
+            appState.sortBy = document.getElementById("sort-select").value;
+
+            document.getElementById("radius-value-badge").textContent = `${appState.radiusMiles} Miles`;
+            document.getElementById("radar-radius-readout").textContent = `${appState.radiusMiles} mi`;
+
+            const filteredCourses = appState.coursesWithInventory
+                .filter(c => c.distanceMiles <= appState.radiusMiles)
+                .map(course => {
+                    const matchingSlots = course.slots.filter(slot => {
+                        if (slot.spotsLeft < appState.players) return false;
+                        if (slot.rate > appState.maxPrice) return false;
+                        if (appState.timeOfDay === "morning" && slot.hour >= 11) return false;
+                        if (appState.timeOfDay === "midday" && (slot.hour < 11 || slot.hour >= 15)) return false;
+                        if (appState.timeOfDay === "twilight" && slot.hour < 15) return false;
+                        if (appState.idealWeatherOnly && slot.weather.score < 7.5) return false;
+                        if (appState.hotDealsOnly && !slot.isHotDeal) return false;
+                        return true;
+                    });
+                    return { ...course, matchingSlots };
+                })
+                .filter(c => c.matchingSlots.length > 0);
+
+            // Sort courses
+            filteredCourses.sort((a, b) => {
+                if (appState.sortBy === "distance") return a.distanceMiles - b.distanceMiles;
+                if (appState.sortBy === "price") {
+                    const minA = Math.min(...a.matchingSlots.map(s => s.rate));
+                    const minB = Math.min(...b.matchingSlots.map(s => s.rate));
+                    return minA - minB;
+                }
+                if (appState.sortBy === "playability") {
+                    const maxA = Math.max(...a.matchingSlots.map(s => s.weather.score));
+                    const maxB = Math.max(...b.matchingSlots.map(s => s.weather.score));
+                    return maxB - maxA;
+                }
+                if (appState.sortBy === "earliest") {
+                    return a.matchingSlots[0].hour - b.matchingSlots[0].hour;
+                }
+                return 0;
+            });
+
+            const totalTees = filteredCourses.reduce((sum, c) => sum + c.matchingSlots.length, 0);
+            document.getElementById("results-summary-count").textContent =
+                `${filteredCourses.length} Courses • ${totalTees} Tee Times`;
+
+            renderCoursesFeed(filteredCourses);
+            renderRadarPins(filteredCourses);
+        }
+
+        function renderCoursesFeed(courses) {
+            const container = document.getElementById("courses-feed-container");
+            if (courses.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl p-10 text-center border border-slate-200 space-y-3">
+                        <i class="ph ph-golf text-4xl text-slate-300"></i>
+                        <h3 class="font-display font-bold text-lg text-slate-800">No Matching Tee Times Found</h3>
+                        <p class="text-xs text-slate-500 max-w-md mx-auto">Try expanding your distance radius up to 100 miles, relaxing the Ideal Weather filter, or adjusting your max green fee.</p>
+                        <button onclick="resetAllFilters()" class="px-4 py-2 rounded-xl bg-fairway-900 text-white text-xs font-bold cursor-pointer">Reset All Filters</button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = courses.map(course => {
+                const lowestRate = Math.min(...course.matchingSlots.map(s => s.rate));
+                const bestScore = Math.max(...course.matchingSlots.map(s => s.weather.score));
+
+                const teePillsHTML = course.matchingSlots.map(slot => {
+                    const scoreBadgeCls = slot.weather.score >= 7.5
+                        ? "bg-emerald-100 text-emerald-900"
+                        : (slot.weather.score >= 5.5 ? "bg-amber-100 text-amber-900" : "bg-rose-100 text-rose-900");
+
+                    return `
+                        <button onclick="openBookingModal('${course.id}', '${slot.id}')" class="shrink-0 group text-left bg-slate-50 hover:bg-fairway-900 border border-slate-200 hover:border-fairway-900 rounded-2xl p-3 min-w-[146px] transition cursor-pointer shadow-2xs">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-display font-extrabold text-sm text-fairway-950 group-hover:text-white">${slot.timeLabel}</span>
+                                ${slot.isHotDeal ? `<span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-500 text-white">Deal</span>` : ""}
+                            </div>
+                            <div class="flex items-baseline gap-1.5 mt-1">
+                                <span class="text-base font-extrabold text-fairway-800 group-hover:text-sand-400">$${slot.rate}</span>
+                                ${slot.isHotDeal ? `<span class="text-[11px] line-through text-slate-400">$${slot.originalRate}</span>` : `<span class="text-[10px] text-slate-400 group-hover:text-slate-300">/ golfer</span>`}
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-slate-200/80 group-hover:border-fairway-700 flex items-center justify-between text-[11px]">
+                                <span class="flex items-center gap-1 text-slate-600 group-hover:text-slate-200 font-medium">
+                                    <i class="ph-fill ${slot.weather.icon} text-amber-500"></i>
+                                    ${slot.weather.temp}° • ${slot.weather.wind}m
+                                </span>
+                                <span class="font-extrabold px-1.5 py-0.5 rounded text-[10px] ${scoreBadgeCls}">${slot.weather.score}</span>
+                            </div>
+                        </button>
+                    `;
+                }).join("");
+
+                return `
+                    <article class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-4 hover:border-fairway-600/50 transition">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-xs font-extrabold text-fairway-900 bg-fairway-100 px-2.5 py-0.5 rounded-full">
+                                        ${course.distanceMiles.toFixed(1)} mi away
+                                    </span>
+                                    <span class="text-xs font-medium text-slate-500">${course.city}</span>
+                                    ${course.badge ? `<span class="text-[11px] font-bold text-amber-900 bg-sand-200 px-2 py-0.5 rounded-md">${course.badge}</span>` : ""}
+                                </div>
+                                <h3 class="font-display font-bold text-lg sm:text-xl text-slate-900 mt-1">${course.name}</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">
+                                    ${course.holes} Holes • Par ${course.par} • Rating/Slope ${course.rating} • ${course.amenities.join(" • ")}
+                                </p>
+                            </div>
+
+                            <div class="flex items-center gap-3 shrink-0 bg-slate-50 px-4 py-2.5 rounded-2xl border border-slate-200/70">
+                                <div>
+                                    <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Rates From</div>
+                                    <div class="font-display font-extrabold text-xl text-fairway-950">$${lowestRate}</div>
+                                </div>
+                                <div class="h-8 w-px bg-slate-200"></div>
+                                <div>
+                                    <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Peak Weather</div>
+                                    <div class="font-display font-extrabold text-base text-emerald-700">${bestScore.toFixed(1)} / 10</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2.5 overflow-x-auto pb-1 tee-pill-scroll">
+                            ${teePillsHTML}
+                        </div>
+                    </article>
+                `;
+            }).join("");
+        }
+
+        function renderRadarPins(courses) {
+            const layer = document.getElementById("radar-pins-layer");
+            if (!layer) return;
+
+            layer.innerHTML = courses.map(c => {
+                const clampedDist = Math.min(100, c.distanceMiles);
+                const radiusPx = (clampedDist / 100) * 220;
+                const rad = ((c.bearingDeg - 90) * Math.PI) / 180;
+                const cx = 250 + radiusPx * Math.cos(rad);
+                const cy = 250 + radiusPx * Math.sin(rad);
+
+                const topScore = Math.max(...c.matchingSlots.map(s => s.weather.score));
+                const fill = topScore >= 7.5 ? "#10b981" : (topScore >= 5.5 ? "#f59e0b" : "#f43f5e");
+
+                return `
+                    <g onclick="inspectRadarCourse('${c.id}')" class="cursor-pointer">
+                        <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="7" fill="${fill}" stroke="#ffffff" stroke-width="1.5" />
+                        <text x="${cx.toFixed(1)}" y="${(cy - 10).toFixed(1)}" text-anchor="middle" fill="#f8fafc" font-size="9" font-weight="bold">
+                            ${c.name.split(" ")[0]}
+                        </text>
+                    </g>
+                `;
+            }).join("");
+        }
+
+        function inspectRadarCourse(courseId) {
+            const course = appState.coursesWithInventory.find(c => c.id === courseId);
+            if (!course) return;
+            document.getElementById("radar-course-title").textContent = course.name;
+            document.getElementById("radar-course-meta").textContent = `${course.city} • ${course.holes} Holes • Par ${course.par}`;
+            document.getElementById("radar-course-details").classList.remove("hidden");
+            document.getElementById("radar-detail-dist").textContent = `${course.distanceMiles.toFixed(1)} mi`;
+
+            const minRate = Math.min(...course.slots.map(s => s.rate));
+            document.getElementById("radar-detail-rate").textContent = `$${minRate}`;
+
+            document.getElementById("radar-detail-tees").innerHTML = course.slots.slice(0, 6).map(slot => `
+                <button onclick="openBookingModal('${course.id}', '${slot.id}')" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-fairway-900 hover:text-white border border-slate-200 text-xs font-bold transition cursor-pointer">
+                    ${slot.timeLabel} ($${slot.rate} • ${slot.weather.temp}°)
+                </button>
+            `).join("");
+        }
+
+        // =========================================================================
+        // 8. TEE-TIME BOOKING MODAL & 4-HOUR ROUND WEATHER PROGRESSION
+        // =========================================================================
+        function openBookingModal(courseId, slotId) {
+            const course = appState.coursesWithInventory.find(c => c.id === courseId);
+            if (!course) return;
+            const slot = course.slots.find(s => s.id === slotId);
+            if (!slot) return;
+            const dateObj = appState.datesList[appState.selectedDateIndex];
+
+            appState.activeBookingSelection = {
+                course,
+                slot,
+                dateObj,
+                players: appState.players,
+                cartOption: "included"
+            };
+
+            document.getElementById("modal-course-distance").textContent = `${course.distanceMiles.toFixed(1)} miles away • ${course.city}`;
+            document.getElementById("modal-course-name").textContent = course.name;
+            document.getElementById("modal-course-specs").textContent = `${course.holes} Holes • Par ${course.par} • Rating/Slope ${course.rating}`;
+            document.getElementById("modal-tee-time").textContent = slot.timeLabel;
+            document.getElementById("modal-tee-date").textContent = dateObj.label;
+
+            document.getElementById("modal-playability-badge").innerHTML = `
+                <i class="ph-fill ${slot.weather.icon} text-2xl text-amber-500"></i>
+                <div>
+                    <div class="text-xs font-extrabold text-fairway-950">${slot.weather.temp}°F • ${slot.weather.conditionText}</div>
+                    <div class="text-[11px] font-semibold text-emerald-700">Wind ${slot.weather.wind} mph • Playability ${slot.weather.score}/10</div>
+                </div>
+            `;
+
+            // Render 4-hour on-course progression from cached hourly forecast
+            const checkpoints = [
+                { label: "Tee Off (Hole 1)", offset: 0 },
+                { label: "The Turn (Hole 9)", offset: 2 },
+                { label: "Back Nine (Hole 14)", offset: 3 },
+                { label: "18th Green Finish", offset: 4 }
+            ];
+            document.getElementById("modal-round-progression").innerHTML = checkpoints.map(cp => {
+                const hr = Math.min(23, slot.hour + cp.offset);
+                const w = getCachedHourWeather(dateObj.isoDate, hr);
+                return `
+                    <div class="bg-slate-50 rounded-xl p-2.5 border border-slate-200/80 text-center">
+                        <div class="text-[10px] font-bold text-slate-500">${cp.label}</div>
+                        <div class="text-[11px] font-semibold text-fairway-800">${formatHourMinuteLabel(hr, 0)}</div>
+                        <div class="my-1 flex items-center justify-center gap-1">
+                            <i class="ph-fill ${w.icon} text-amber-500"></i>
+                            <span class="font-extrabold text-sm text-slate-900">${w.temp}°F</span>
+                        </div>
+                        <div class="text-[10px] text-slate-500">${w.wind} mph • ${w.precipProb}% rain</div>
+                    </div>
+                `;
+            }).join("");
+
+            document.getElementById("modal-cart-option").value = "included";
+            updateModalPlayers(appState.players);
+
+            const modal = document.getElementById("booking-modal");
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        }
+
+        function closeBookingModal() {
+            const modal = document.getElementById("booking-modal");
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+        }
+
+        function updateModalPlayers(count) {
+            if (!appState.activeBookingSelection) return;
+            appState.activeBookingSelection.players = count;
+            document.querySelectorAll(".modal-player-btn").forEach(btn => {
+                const active = Number(btn.dataset.p) === count;
+                btn.className = active
+                    ? "modal-player-btn py-2 text-xs font-bold rounded-lg bg-white text-fairway-900 shadow-sm transition"
+                    : "modal-player-btn py-2 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 transition";
+            });
+            recalculateModalTotal();
+        }
+
+        function recalculateModalTotal() {
+            if (!appState.activeBookingSelection) return;
+            const { slot, players } = appState.activeBookingSelection;
+            const cartOption = document.getElementById("modal-cart-option").value;
+            appState.activeBookingSelection.cartOption = cartOption;
+
+            const perPlayer = cartOption === "walk" ? Math.max(20, slot.rate - 14) : slot.rate;
+            const total = perPlayer * players;
+            const label = cartOption === "walk"
+                ? `Walking Green Fee (${players} Player${players > 1 ? "s" : ""} × $${perPlayer})`
+                : `Green Fee + GPS Cart (${players} Player${players > 1 ? "s" : ""} × $${perPlayer})`;
+
+            document.getElementById("modal-rate-line-label").textContent = label;
+            document.getElementById("modal-subtotal").textContent = `$${total.toFixed(2)}`;
+            document.getElementById("modal-grand-total").textContent = `$${total.toFixed(2)}`;
+        }
+
+        function confirmTeeTimeBooking(launchScorecardImmediately = false) {
+            if (!appState.activeBookingSelection) return;
+            const { course, slot, dateObj, players, cartOption } = appState.activeBookingSelection;
+            const golferName = document.getElementById("modal-golfer-name").value.trim() || "You";
+            const perPlayerRate = cartOption === "walk" ? Math.max(20, slot.rate - 14) : slot.rate;
+
+            const confirmationCode = "FC-" + Math.floor(100000 + Math.random() * 900000);
+            const courseLayout = generateCourseHoleLayout(course);
+
+            // Initialize multi-player scorecard state for booked player count (1 to 4)
+            const scorecardPlayers = Array.from({ length: players }, (_, idx) => ({
+                id: `p-${idx + 1}`,
+                name: idx === 0 ? golferName : `Player ${idx + 1}`,
+                scores: Array(18).fill(null) // null = unplayed, number = strokes
+            }));
+
+            // Hole-by-hole stats for lead golfer (Fairway, GIR, Putts)
+            const leadStats = Array.from({ length: 18 }, () => ({
+                fir: null, // true, false, or 'na' on Par 3s
+                gir: null, // true or false
+                putts: null // 0..5
+            }));
+
+            const bookingRecord = {
+                confirmationCode,
+                courseId: course.id,
+                courseName: course.name,
+                city: course.city,
+                distanceMiles: course.distanceMiles,
+                ratingSlope: course.rating,
+                dateLabel: dateObj.label,
+                timeLabel: slot.timeLabel,
+                players,
+                cartOption: cartOption === "walk" ? "Walking" : "Cart Included",
+                totalPrice: perPlayerRate * players,
+                golferName,
+                weatherSnapshot: `${slot.weather.temp}°F • ${slot.weather.conditionText} • Score ${slot.weather.score.toFixed(1)}/10`,
+                weatherDetails: {
+                    temp: slot.weather.temp,
+                    wind: slot.weather.wind,
+                    conditionText: slot.weather.conditionText,
+                    icon: slot.weather.icon,
+                    score: slot.weather.score
+                },
+                scorecard: {
+                    status: "not_started", // 'not_started' | 'in_progress' | 'completed'
+                    holes: courseLayout,
+                    players: scorecardPlayers,
+                    leadStats,
+                    completedAt: null
+                }
+            };
+
+            appState.savedBookings.unshift(bookingRecord);
+            saveBookingsToStorage();
+            updateBookingBadges();
+            renderSavedBookingsDrawer();
+            closeBookingModal();
+
+            if (launchScorecardImmediately) {
+                showToast(`Booked ${course.name} (${slot.timeLabel})! Opening Scorecard...`);
+                openScorecardModal(confirmationCode);
+            } else {
+                showToast(`Tee time locked at ${course.name} (${slot.timeLabel})!`);
+            }
+        }
+
+        // =========================================================================
+        // 12. SAVED 'MY BOOKINGS' DRAWER & PERSISTENCE
+        // =========================================================================
+        function loadSavedBookingsFromStorage() {
+            try {
+                const raw = localStorage.getItem("fairwaycast_mn_bookings");
+                if (raw) {
+                    appState.savedBookings = JSON.parse(raw);
+                    // Ensure legacy saved bookings get a valid scorecard structure if missing
+                    appState.savedBookings.forEach(b => {
+                        if (!b.scorecard) {
+                            const matchedCourse = GOLF_COURSES_DB.find(c => c.name === b.courseName) || GOLF_COURSES_DB[0];
+                            b.scorecard = {
+                                status: "not_started",
+                                holes: generateCourseHoleLayout(matchedCourse),
+                                players: Array.from({ length: b.players || 2 }, (_, idx) => ({
+                                    id: `p-${idx + 1}`,
+                                    name: idx === 0 ? (b.golferName || "You") : `Player ${idx + 1}`,
+                                    scores: Array(18).fill(null)
+                                })),
+                                leadStats: Array.from({ length: 18 }, () => ({ fir: null, gir: null, putts: null })),
+                                completedAt: null
+                            };
+                        }
+                    });
+                }
+            } catch (e) {
+                appState.savedBookings = [];
+            }
+            updateBookingBadges();
+            renderSavedBookingsDrawer();
+        }
+
+        function saveBookingsToStorage() {
+            try {
+                localStorage.setItem("fairwaycast_mn_bookings", JSON.stringify(appState.savedBookings));
+            } catch (e) { /* Ignore storage quota issues */ }
+        }
+
+        function updateBookingBadges() {
+            const count = appState.savedBookings.length;
+            document.getElementById("desktop-booking-count").textContent = count;
+            document.getElementById("mobile-booking-count").textContent = count;
+        }
+
+        function toggleBookingsDrawer() {
+            const drawer = document.getElementById("bookings-drawer");
+            if (drawer.classList.contains("hidden")) {
+                drawer.classList.remove("hidden");
+                drawer.classList.add("flex");
+            } else {
+                drawer.classList.add("hidden");
+                drawer.classList.remove("flex");
+            }
+        }
+
+        function cancelSavedBooking(code) {
+            appState.savedBookings = appState.savedBookings.filter(b => b.confirmationCode !== code);
+            saveBookingsToStorage();
+            updateBookingBadges();
+            renderSavedBookingsDrawer();
+            showToast("Tee time reservation cancelled.");
+        }
+
+        function renderSavedBookingsDrawer() {
+            const container = document.getElementById("bookings-list-container");
+            if (appState.savedBookings.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 px-4 space-y-2">
+                        <i class="ph ph-calendar-plus text-4xl text-slate-300"></i>
+                        <h4 class="font-display font-bold text-slate-700">No Tee Times Reserved Yet</h4>
+                        <p class="text-xs text-slate-500">Click any weather-scored tee time pill on a course card to inspect the round forecast, reserve your spot, and launch your 18-hole scorecard.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = appState.savedBookings.map(b => {
+                const scSummary = getLeadGolferSummary(b);
+                let statusPill = `<span class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">Ready to Tee Off</span>`;
+                let ctaText = "Launch Live Scorecard";
+                let ctaStyle = "bg-fairway-900 hover:bg-fairway-800 text-white";
+
+                if (b.scorecard && b.scorecard.status === "completed") {
+                    statusPill = `<span class="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Final: ${scSummary.totalStrokes} (${scSummary.toParFormatted})</span>`;
+                    ctaText = "View Completed Scorecard";
+                    ctaStyle = "bg-emerald-700 hover:bg-emerald-600 text-white";
+                } else if (scSummary.holesPlayed > 0) {
+                    statusPill = `<span class="text-[10px] font-extrabold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">Thru ${scSummary.holesPlayed}: ${scSummary.toParFormatted} (${scSummary.totalStrokes})</span>`;
+                    ctaText = `Resume Scorecard (Hole ${Math.min(18, scSummary.holesPlayed + 1)})`;
+                    ctaStyle = "bg-fairway-800 hover:bg-fairway-700 text-sand-300 border border-sand-500/40";
+                }
+
+                return `
+                    <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[11px] font-extrabold uppercase tracking-wider text-fairway-800 bg-fairway-100 px-2 py-0.5 rounded">
+                                Conf #${b.confirmationCode}
+                            </span>
+                            ${statusPill}
+                        </div>
+                        <div>
+                            <div class="flex items-start justify-between gap-2">
+                                <h4 class="font-display font-bold text-base text-slate-900">${b.courseName}</h4>
+                                <button onclick="cancelSavedBooking('${b.confirmationCode}')" class="text-xs text-rose-600 hover:underline font-semibold shrink-0">
+                                    Cancel
+                                </button>
+                            </div>
+                            <p class="text-xs text-slate-500">${b.city} (${b.distanceMiles.toFixed(1)} mi)</p>
+                        </div>
+                        <div class="bg-sand-100/70 rounded-xl p-2.5 text-xs space-y-1">
+                            <div class="font-bold text-fairway-950">${b.dateLabel} at ${b.timeLabel}</div>
+                            <div class="text-slate-600">${b.players} Golfer(s) • ${b.cartOption} • $${b.totalPrice.toFixed(2)}</div>
+                            <div class="text-[11px] text-fairway-800 font-medium pt-1 border-t border-sand-200">
+                                Forecast Lock: ${b.weatherSnapshot}
+                            </div>
+                        </div>
+                        <button onclick="openScorecardFromDrawer('${b.confirmationCode}')" class="w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs ${ctaStyle}">
+                            <i class="ph-fill ph-pencil-simple-line text-sm"></i>
+                            <span>${ctaText}</span>
+                        </button>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        // =========================================================================
+        // 13. INTERACTIVE 18-HOLE SCORECARD & ROUND TRACKER ENGINE
+        // =========================================================================
+        function generateCourseHoleLayout(course) {
+            // Deterministic course-accurate 18-hole par, yardage & handicap generator matching exact course par
+            const seed = course.id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+            const targetPar = course.par || 72;
+
+            // Standard 18-hole par templates (9 holes front, 9 holes back)
+            const parTemplates = {
+                72: [4, 4, 3, 5, 4, 4, 3, 4, 5,   4, 5, 3, 4, 4, 4, 3, 4, 5],
+                71: [4, 4, 3, 5, 4, 3, 4, 4, 5,   4, 4, 3, 4, 5, 4, 3, 4, 4],
+                70: [4, 3, 4, 4, 5, 3, 4, 4, 4,   4, 4, 3, 5, 4, 3, 4, 4, 4]
+            };
+
+            const basePars = [...(parTemplates[targetPar] || parTemplates[72])];
+            // Rotate slightly per course seed for distinct hole routing feel while keeping Front 9 & Back 9 balanced
+            const frontShift = seed % 4;
+            const backShift = (seed >> 2) % 4;
+            const front9 = basePars.slice(0, 9);
+            const back9 = basePars.slice(9, 18);
+
+            const rotatedFront = [...front9.slice(frontShift), ...front9.slice(0, frontShift)];
+            const rotatedBack = [...back9.slice(backShift), ...back9.slice(0, backShift)];
+            const fullPars = [...rotatedFront, ...rotatedBack];
+
+            // Odd handicap indexes on Front 9, Even on Back 9
+            const frontHdcp = [7, 13, 17, 3, 9, 1, 15, 11, 5];
+            const backHdcp  = [8, 2, 16, 10, 4, 12, 18, 14, 6];
+            const fullHdcp  = [...frontHdcp, ...backHdcp];
+
+            return fullPars.map((par, idx) => {
+                const holeNum = idx + 1;
+                const variance = ((seed + holeNum * 17) % 55) - 20;
+                let yards = 385 + variance;
+                if (par === 3) yards = 165 + ((seed + holeNum * 13) % 45);
+                if (par === 5) yards = 525 + ((seed + holeNum * 19) % 60);
+
+                return {
+                    hole: holeNum,
+                    par,
+                    yards,
+                    hcp: fullHdcp[idx]
+                };
+            });
+        }
+
+        function openScorecardFromDrawer(confirmationCode) {
+            toggleBookingsDrawer();
+            openScorecardModal(confirmationCode);
+        }
+
+        function openScorecardModal(confirmationCode) {
+            const booking = appState.savedBookings.find(b => b.confirmationCode === confirmationCode);
+            if (!booking) return;
+
+            appState.activeScorecardCode = confirmationCode;
+            const sc = booking.scorecard;
+
+            // Default active hole to first unplayed hole, or Hole 1
+            const firstUnplayedIdx = sc.players[0].scores.findIndex(s => s === null);
+            appState.activeHoleNumber = firstUnplayedIdx >= 0 ? firstUnplayedIdx + 1 : 1;
+
+            // Populate Header
+            document.getElementById("sc-conf-badge").textContent = `Conf #${booking.confirmationCode}`;
+            document.getElementById("sc-datetime-label").textContent = `${booking.dateLabel} • ${booking.timeLabel}`;
+            document.getElementById("sc-course-name").textContent = `${booking.courseName} — Live Scorecard`;
+
+            const totalYards = sc.holes.reduce((sum, h) => sum + h.yards, 0);
+            const totalPar = sc.holes.reduce((sum, h) => sum + h.par, 0);
+            document.getElementById("sc-course-meta").textContent = 
+                `${booking.city} • 18 Holes • Par ${totalPar} • ${totalYards.toLocaleString()} Yards • Slope ${booking.ratingSlope || "72.4 / 131"}`;
+
+            const wd = booking.weatherDetails;
+            const weatherPill = document.getElementById("sc-weather-pill");
+            if (wd) {
+                weatherPill.innerHTML = `<i class="ph-fill ${wd.icon} text-amber-400"></i> ${wd.temp}°F • ${wd.wind} mph • Playability ${wd.score.toFixed(1)}/10`;
+            } else {
+                weatherPill.textContent = booking.weatherSnapshot;
+            }
+
+            renderScorecardWorkspace();
+
+            const modal = document.getElementById("scorecard-modal");
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        }
+
+        function closeScorecardModal() {
+            const modal = document.getElementById("scorecard-modal");
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+            renderSavedBookingsDrawer();
+        }
+
+        function getActiveScorecardBooking() {
+            return appState.savedBookings.find(b => b.confirmationCode === appState.activeScorecardCode);
+        }
+
+        function setScorecardNineFilter(mode) {
+            appState.scorecardNineView = mode;
+            ["front", "back", "all"].forEach(m => {
+                const btn = document.getElementById(`sc-nine-${m}`);
+                if (!btn) return;
+                btn.className = (m === mode)
+                    ? "px-2.5 py-1 rounded-lg text-[11px] font-bold bg-fairway-900 text-white transition cursor-pointer"
+                    : "px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer";
+            });
+            renderScorecardTables();
+        }
+
+        function selectActiveHole(holeNum) {
+            appState.activeHoleNumber = Math.max(1, Math.min(18, holeNum));
+            renderScorecardWorkspace();
+        }
+
+        function changeActiveHole(delta) {
+            selectActiveHole(appState.activeHoleNumber + delta);
+        }
+
+        function updatePlayerHoleScore(playerIdx, holeIdx, newScore) {
+            const booking = getActiveScorecardBooking();
+            if (!booking) return;
+            const player = booking.scorecard.players[playerIdx];
+            if (!player) return;
+
+            if (newScore === null || newScore < 1) {
+                player.scores[holeIdx] = null;
+            } else {
+                player.scores[holeIdx] = Math.min(15, newScore);
+                if (booking.scorecard.status === "not_started") {
+                    booking.scorecard.status = "in_progress";
+                }
+                // Auto-set default putts to 2 for lead golfer if unrecorded
+                if (playerIdx === 0 && booking.scorecard.leadStats[holeIdx].putts === null) {
+                    booking.scorecard.leadStats[holeIdx].putts = 2;
+                }
+            }
+
+            saveBookingsToStorage();
+            renderScorecardWorkspace();
+        }
+
+        function stepPlayerHoleScore(playerIdx, holeIdx, delta) {
+            const booking = getActiveScorecardBooking();
+            if (!booking) return;
+            const current = booking.scorecard.players[playerIdx].scores[holeIdx];
+            const holePar = booking.scorecard.holes[holeIdx].par;
+            if (current === null) {
+                updatePlayerHoleScore(playerIdx, holeIdx, holePar);
+            } else {
+                const next = current + delta;
+                updatePlayerHoleScore(playerIdx, holeIdx, next < 1 ? null : next);
+            }
+        }
+
+        function updatePlayerName(playerIdx, newName) {
+            const booking = getActiveScorecardBooking();
+            if (!booking) return;
+            booking.scorecard.players[playerIdx].name = newName.trim() || (playerIdx === 0 ? "You" : `Player ${playerIdx + 1}`);
+            saveBookingsToStorage();
+            renderScorecardWorkspace();
+        }
+
+        function toggleLeadHoleStat(holeIdx, statKey, value) {
+            const booking = getActiveScorecardBooking();
+            if (!booking) return;
+            const stat = booking.scorecard.leadStats[holeIdx];
+            stat[statKey] = (stat[statKey] === value) ? null : value;
+            saveBookingsToStorage();
+            renderScorecardWorkspace();
+        }
+
+        function getLeadGolferSummary(booking) {
+            const sc = booking.scorecard;
+            const lead = sc.players[0];
+            let totalStrokes = 0;
+            let parForPlayedHoles = 0;
+            let holesPlayed = 0;
+            let frontStrokes = 0;
+            let backStrokes = 0;
+            let eagles = 0;
+            let birdies = 0;
+            let pars = 0;
+            let bogeys = 0;
+            let doublePlus = 0;
+
+            lead.scores.forEach((strokes, idx) => {
+                if (strokes !== null) {
+                    const hPar = sc.holes[idx].par;
+                    totalStrokes += strokes;
+                    parForPlayedHoles += hPar;
+                    holesPlayed++;
+                    if (idx < 9) frontStrokes += strokes;
+                    else backStrokes += strokes;
+
+                    const diff = strokes - hPar;
+                    if (diff <= -2) eagles++;
+                    else if (diff === -1) birdies++;
+                    else if (diff === 0) pars++;
+                    else if (diff === 1) bogeys++;
+                    else doublePlus++;
+                }
+            });
+
+            const toPar = totalStrokes - parForPlayedHoles;
+            const toParFormatted = holesPlayed === 0 ? "E" : (toPar === 0 ? "E" : (toPar > 0 ? `+${toPar}` : `${toPar}`));
+
+            // Fairways, GIR, Putts calculations
+            let firEligible = 0;
+            let firHit = 0;
+            let girEligible = 0;
+            let girHit = 0;
+            let totalPutts = 0;
+            let puttsHoles = 0;
+
+            sc.leadStats.forEach((st, idx) => {
+                const hPar = sc.holes[idx].par;
+                if (hPar >= 4 && st.fir !== null) {
+                    firEligible++;
+                    if (st.fir === true) firHit++;
+                }
+                if (st.gir !== null) {
+                    girEligible++;
+                    if (st.gir === true) girHit++;
+                }
+                if (st.putts !== null) {
+                    totalPutts += st.putts;
+                    puttsHoles++;
+                }
+            });
+
+            return {
+                totalStrokes,
+                parForPlayedHoles,
+                holesPlayed,
+                frontStrokes,
+                backStrokes,
+                toPar,
+                toParFormatted,
+                eagles,
+                birdies,
+                pars,
+                bogeys,
+                doublePlus,
+                firPct: firEligible > 0 ? `${Math.round((firHit / firEligible) * 100)}% (${firHit}/${firEligible})` : "--",
+                girPct: girEligible > 0 ? `${Math.round((girHit / girEligible) * 100)}% (${girHit}/${girEligible})` : "--",
+                totalPutts: puttsHoles > 0 ? `${totalPutts}` : "--"
+            };
+        }
+
+        function formatClassicGolfScoreBadge(strokes, par, isCompact = false) {
+            if (strokes === null || strokes === undefined) {
+                return `<span class="text-slate-300 font-bold text-xs">–</span>`;
+            }
+            const diff = strokes - par;
+            const sizeCls = isCompact ? "w-6 h-6 text-xs" : "w-7 h-7 text-sm";
+
+            if (diff <= -2) {
+                // Double circle for Eagle or better
+                return `<span class="inline-flex items-center justify-center ${sizeCls} rounded-full border-2 border-amber-500 ring-2 ring-amber-300/60 bg-amber-50 text-amber-900 font-extrabold">${strokes}</span>`;
+            }
+            if (diff === -1) {
+                // Single circle for Birdie
+                return `<span class="inline-flex items-center justify-center ${sizeCls} rounded-full border-2 border-emerald-600 bg-emerald-50 text-emerald-900 font-extrabold">${strokes}</span>`;
+            }
+            if (diff === 0) {
+                // Clean text for Par
+                return `<span class="inline-flex items-center justify-center ${sizeCls} font-extrabold text-slate-800">${strokes}</span>`;
+            }
+            if (diff === 1) {
+                // Single square for Bogey
+                return `<span class="inline-flex items-center justify-center ${sizeCls} rounded-md border border-sky-600 bg-sky-50 text-sky-900 font-extrabold">${strokes}</span>`;
+            }
+            // Double square for Double Bogey+
+            return `<span class="inline-flex items-center justify-center ${sizeCls} rounded-md border-2 border-rose-600 ring-1 ring-rose-300 bg-rose-50 text-rose-900 font-extrabold">${strokes}</span>`;
+        }
+
+        function renderScorecardWorkspace() {
+            const booking = getActiveScorecardBooking();
+            if (!booking) return;
+
+            const sc = booking.scorecard;
+            const summary = getLeadGolferSummary(booking);
+            const holeIdx = appState.activeHoleNumber - 1;
+            const currentHole = sc.holes[holeIdx];
+
+            // 1. Top Live Summary Bar
+            const toParBadgeColor = summary.toPar < 0 
+                ? "bg-emerald-100 text-emerald-900 border-emerald-300" 
+                : (summary.toPar > 0 ? "bg-sky-100 text-sky-900 border-sky-300" : "bg-slate-200 text-slate-800 border-slate-300");
+
+            document.getElementById("sc-live-summary-bar").innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase">Score to Par:</span>
+                    <span class="px-2.5 py-0.5 rounded-lg border font-display font-extrabold text-sm ${toParBadgeColor}">
+                        ${summary.toParFormatted}
+                    </span>
+                </div>
+                <div class="h-4 w-px bg-slate-200"></div>
+                <div class="text-xs font-bold text-slate-700">
+                    Total: <span class="font-extrabold text-fairway-950 text-sm">${summary.totalStrokes}</span>
+                    <span class="text-slate-400 font-medium ml-1">(Thru ${summary.holesPlayed}/18)</span>
+                </div>
+                <div class="hidden md:flex items-center gap-2 text-[11px] font-bold">
+                    <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">${summary.birdies + summary.eagles} Birdie+</span>
+                    <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700">${summary.pars} Par</span>
+                    <span class="px-2 py-0.5 rounded bg-sky-50 text-sky-800 border border-sky-200">${summary.bogeys} Bogey</span>
+                    <span class="px-2 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200">${summary.doublePlus} Dbl+</span>
+                </div>
+            `;
+
+            // 2. Completed Banner & Finish Button State
+            const finishBtn = document.getElementById("sc-finish-btn");
+            const completedBanner = document.getElementById("sc-completed-banner");
+            if (sc.status === "completed") {
+                finishBtn.innerHTML = `<i class="ph-bold ph-check-circle text-base"></i><span>Round Saved</span>`;
+                completedBanner.classList.remove("hidden");
+                completedBanner.innerHTML = `
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <div class="text-xs font-extrabold uppercase tracking-wider text-sand-400 flex items-center gap-1.5">
+                                <i class="ph-fill ph-trophy"></i> Official Round Summary • ${booking.courseName}
+                            </div>
+                            <h4 class="font-display font-extrabold text-2xl text-white mt-0.5">
+                                Final Score: ${summary.totalStrokes} (${summary.toParFormatted}) • Front ${summary.frontStrokes} / Back ${summary.backStrokes}
+                            </h4>
+                            <p class="text-xs text-emerald-200 mt-1">
+                                Played in ${booking.weatherSnapshot} • ${summary.eagles + summary.birdies} Birdies/Eagles, ${summary.pars} Pars, ${summary.bogeys} Bogeys
+                            </p>
+                        </div>
+                        <button onclick="reopenRoundForEditing()" class="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition shrink-0 cursor-pointer">
+                            Edit Scores
+                        </button>
+                    </div>
+                `;
+            } else {
+                finishBtn.innerHTML = `<i class="ph-bold ph-trophy text-base"></i><span>Finish &amp; Save Round</span>`;
+                completedBanner.classList.add("hidden");
+            }
+
+            // 3. Active Hole Header & Multi-Player Steppers
+            document.getElementById("sc-active-hole-badge").textContent = `Hole ${currentHole.hole} • Par ${currentHole.par}`;
+            document.getElementById("sc-active-hole-sub").textContent = `${currentHole.yards} Yards • Handicap Index ${currentHole.hcp}`;
+
+            document.getElementById("sc-active-hole-players").innerHTML = sc.players.map((p, pIdx) => {
+                const val = p.scores[holeIdx];
+                return `
+                    <div class="bg-white rounded-xl p-2.5 border border-slate-200/90 flex items-center justify-between gap-2 shadow-2xs">
+                        <div class="min-w-0 flex-1">
+                            <input type="text" value="${p.name.replace(/"/g, "&quot;")}" onchange="updatePlayerName(${pIdx}, this.value)"
+                                class="w-full text-xs font-bold text-slate-800 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-fairway-700 focus:outline-none truncate"
+                                title="Click to edit player name">
+                            <div class="text-[10px] text-slate-400 font-medium mt-0.5">
+                                ${val === null ? `Tap + for Par ${currentHole.par}` : (val - currentHole.par === 0 ? "Par" : (val - currentHole.par > 0 ? `+${val - currentHole.par}` : `${val - currentHole.par}`))}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="stepPlayerHoleScore(${pIdx}, ${holeIdx}, -1)" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-sm flex items-center justify-center cursor-pointer">−</button>
+                            <div class="w-8 flex justify-center">
+                                ${formatClassicGolfScoreBadge(val, currentHole.par, false)}
+                            </div>
+                            <button onclick="stepPlayerHoleScore(${pIdx}, ${holeIdx}, 1)" class="w-7 h-7 rounded-lg bg-fairway-900 hover:bg-fairway-800 text-white font-extrabold text-sm flex items-center justify-center cursor-pointer">+</button>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            // 4. Lead Golfer Hole Shot Stats Controls (FIR, GIR, Putts)
+            document.getElementById("sc-lead-player-tag").textContent = sc.players[0].name;
+            const holeStat = sc.leadStats[holeIdx];
+            const isPar3 = currentHole.par === 3;
+
+            document.getElementById("sc-hole-stats-controls").innerHTML = `
+                <!-- Fairway Hit -->
+                <div class="bg-slate-50 rounded-xl p-2 border border-slate-200/70 text-center">
+                    <div class="text-[10px] font-bold text-slate-500 uppercase mb-1">Fairway</div>
+                    ${isPar3 
+                        ? `<span class="text-[11px] font-semibold text-slate-400 block py-1">N/A (Par 3)</span>`
+                        : `<div class="grid grid-cols-2 gap-1">
+                            <button onclick="toggleLeadHoleStat(${holeIdx}, 'fir', true)" class="py-1 rounded-lg text-xs font-extrabold cursor-pointer transition ${holeStat.fir === true ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-200 text-slate-600'}">Hit</button>
+                            <button onclick="toggleLeadHoleStat(${holeIdx}, 'fir', false)" class="py-1 rounded-lg text-xs font-extrabold cursor-pointer transition ${holeStat.fir === false ? 'bg-rose-600 text-white' : 'bg-white border border-slate-200 text-slate-600'}">Miss</button>
+                           </div>`
+                    }
+                </div>
+
+                <!-- Green in Regulation -->
+                <div class="bg-slate-50 rounded-xl p-2 border border-slate-200/70 text-center">
+                    <div class="text-[10px] font-bold text-slate-500 uppercase mb-1">GIR</div>
+                    <div class="grid grid-cols-2 gap-1">
+                        <button onclick="toggleLeadHoleStat(${holeIdx}, 'gir', true)" class="py-1 rounded-lg text-xs font-extrabold cursor-pointer transition ${holeStat.gir === true ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-200 text-slate-600'}">Yes</button>
+                        <button onclick="toggleLeadHoleStat(${holeIdx}, 'gir', false)" class="py-1 rounded-lg text-xs font-extrabold cursor-pointer transition ${holeStat.gir === false ? 'bg-amber-600 text-white' : 'bg-white border border-slate-200 text-slate-600'}">No</button>
+                    </div>
+                </div>
+
+                <!-- Putts -->
+                <div class="bg-slate-50 rounded-xl p-2 border border-slate-200/70 text-center">
+                    <div class="text-[10px] font-bold text-slate-500 uppercase mb-1">Putts</div>
+                    <div class="grid grid-cols-4 gap-0.5">
+                        ${[1, 2, 3, 4].map(pt => `
+                            <button onclick="toggleLeadHoleStat(${holeIdx}, 'putts', ${pt})" class="py-1 rounded text-[11px] font-extrabold cursor-pointer transition ${holeStat.putts === pt ? 'bg-fairway-900 text-white' : 'bg-white border border-slate-200 text-slate-700'}">${pt === 4 ? '4+' : pt}</button>
+                        `).join("")}
+                    </div>
+                </div>
+            `;
+
+            document.getElementById("sc-lead-round-stat-totals").innerHTML = `
+                <div>
+                    <span class="text-[10px] text-slate-400 block">Fairways</span>
+                    <span class="font-extrabold text-slate-800">${summary.firPct}</span>
+                </div>
+                <div>
+                    <span class="text-[10px] text-slate-400 block">Greens (GIR)</span>
+                    <span class="font-extrabold text-slate-800">${summary.girPct}</span>
+                </div>
+                <div>
+                    <span class="text-[10px] text-slate-400 block">Total Putts</span>
+                    <span class="font-extrabold text-slate-800">${summary.totalPutts}</span>
+                </div>
+            `;
+
+            // 5. Render Front 9 & Back 9 Tables
+            renderScorecardTables();
+        }
+
+        function renderScorecardTables() {
+            const booking = getActiveScorecardBooking();
+            if (!booking) return;
+            const sc = booking.scorecard;
+            const container = document.getElementById("sc-tables-container");
+
+            const sections = [];
+            if (appState.scorecardNineView === "front" || appState.scorecardNineView === "all") {
+                sections.push({ title: "Front Nine", startIdx: 0, endIdx: 9, sumLabel: "OUT", showTotal: false });
+            }
+            if (appState.scorecardNineView === "back" || appState.scorecardNineView === "all") {
+                sections.push({ title: "Back Nine", startIdx: 9, endIdx: 18, sumLabel: "IN", showTotal: true });
+            }
+
+            container.innerHTML = sections.map(sec => {
+                const sliceHoles = sc.holes.slice(sec.startIdx, sec.endIdx);
+                const nineYards = sliceHoles.reduce((s, h) => s + h.yards, 0);
+                const ninePar = sliceHoles.reduce((s, h) => s + h.par, 0);
+                const full18Yards = sc.holes.reduce((s, h) => s + h.yards, 0);
+                const full18Par = sc.holes.reduce((s, h) => s + h.par, 0);
+
+                const headerHoleCells = sliceHoles.map(h => {
+                    const isActive = h.hole === appState.activeHoleNumber;
+                    return `
+                        <th onclick="selectActiveHole(${h.hole})" class="py-2 px-1.5 text-center cursor-pointer transition ${isActive ? 'bg-sand-500 text-fairway-950 font-extrabold' : 'hover:bg-fairway-800'}">
+                            ${h.hole}
+                        </th>
+                    `;
+                }).join("");
+
+                const yardCells = sliceHoles.map(h => `<td class="py-1.5 px-1 text-center text-[11px] text-slate-500 font-medium">${h.yards}</td>`).join("");
+                const parCells = sliceHoles.map(h => `<td class="py-1.5 px-1 text-center text-xs font-extrabold text-fairway-900">${h.par}</td>`).join("");
+                const hcpCells = sliceHoles.map(h => `<td class="py-1 px-1 text-center text-[10px] text-slate-400">${h.hcp}</td>`).join("");
+
+                const playerRowsHTML = sc.players.map((p, pIdx) => {
+                    const scoreCells = sliceHoles.map(h => {
+                        const idx = h.hole - 1;
+                        const val = p.scores[idx];
+                        const isActive = h.hole === appState.activeHoleNumber;
+                        return `
+                            <td onclick="selectActiveHole(${h.hole})" class="py-2 px-1 text-center cursor-pointer transition ${isActive ? 'bg-sand-100/80' : 'hover:bg-slate-50'}">
+                                ${formatClassicGolfScoreBadge(val, h.par, true)}
+                            </td>
+                        `;
+                    }).join("");
+
+                    const nineTotal = p.scores.slice(sec.startIdx, sec.endIdx).reduce((sum, v) => sum + (v || 0), 0);
+                    const nineHasScores = p.scores.slice(sec.startIdx, sec.endIdx).some(v => v !== null);
+                    const total18 = p.scores.reduce((sum, v) => sum + (v || 0), 0);
+                    const hasAny18 = p.scores.some(v => v !== null);
+
+                    return `
+                        <tr class="border-t border-slate-200">
+                            <td class="py-2 px-3 text-xs font-bold text-slate-900 whitespace-nowrap bg-white sticky left-0 z-10 border-r border-slate-100">
+                                ${p.name}
+                            </td>
+                            ${scoreCells}
+                            <td class="py-2 px-2 text-center font-display font-extrabold text-xs bg-slate-100 text-fairway-950">
+                                ${nineHasScores ? nineTotal : "–"}
+                            </td>
+                            ${sec.showTotal ? `
+                                <td class="py-2 px-2 text-center font-display font-extrabold text-xs bg-fairway-900 text-sand-300">
+                                    ${hasAny18 ? total18 : "–"}
+                                </td>
+                            ` : ""}
+                        </tr>
+                    `;
+                }).join("");
+
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200 overflow-x-auto shadow-2xs">
+                        <table class="w-full min-w-[640px] border-collapse">
+                            <thead>
+                                <tr class="bg-fairway-900 text-white text-xs">
+                                    <th class="py-2 px-3 text-left font-display font-bold uppercase tracking-wider sticky left-0 bg-fairway-900 z-10 w-32">
+                                        ${sec.title}
+                                    </th>
+                                    ${headerHoleCells}
+                                    <th class="py-2 px-2 text-center font-extrabold bg-fairway-950 text-sand-400 w-12">${sec.sumLabel}</th>
+                                    ${sec.showTotal ? `<th class="py-2 px-2 text-center font-extrabold bg-fairway-950 text-white w-14">TOT</th>` : ""}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="bg-slate-50/70 border-b border-slate-100">
+                                    <td class="py-1.5 px-3 text-[11px] font-bold text-slate-500 sticky left-0 bg-slate-50 z-10">Yards</td>
+                                    ${yardCells}
+                                    <td class="py-1.5 px-2 text-center text-[11px] font-bold text-slate-600 bg-slate-100">${nineYards}</td>
+                                    ${sec.showTotal ? `<td class="py-1.5 px-2 text-center text-[11px] font-bold text-slate-700 bg-slate-200/70">${full18Yards}</td>` : ""}
+                                </tr>
+                                <tr class="bg-fairway-50/60 border-b border-slate-100">
+                                    <td class="py-1.5 px-3 text-xs font-extrabold text-fairway-900 sticky left-0 bg-fairway-50 z-10">Par</td>
+                                    ${parCells}
+                                    <td class="py-1.5 px-2 text-center text-xs font-extrabold text-fairway-950 bg-fairway-100">${ninePar}</td>
+                                    ${sec.showTotal ? `<td class="py-1.5 px-2 text-center text-xs font-extrabold text-fairway-950 bg-fairway-200/70">${full18Par}</td>` : ""}
+                                </tr>
+                                <tr class="border-b border-slate-200">
+                                    <td class="py-1 px-3 text-[10px] font-semibold text-slate-400 sticky left-0 bg-white z-10">Handicap</td>
+                                    ${hcpCells}
+                                    <td class="py-1 px-2 text-center text-[10px] text-slate-400 bg-slate-50">–</td>
+                                    ${sec.showTotal ? `<td class="py-1 px-2 text-center text-[10px] text-slate-400 bg-slate-100">–</td>` : ""}
+                                </tr>
+                                ${playerRowsHTML}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function finishAndSaveRound() {
+            const booking = getActiveScorecardBooking();
+            if (!booking) return;
+            const summary = getLeadGolferSummary(booking);
+            if (summary.holesPlayed === 0) {
+                showToast("Enter at least one hole score before finishing your round.", "warning");
+                return;
+            }
+            booking.scorecard.status = "completed";
+            booking.scorecard.completedAt = new Date().toISOString();
+            saveBookingsToStorage();
+            renderScorecardWorkspace();
+            renderSavedBookingsDrawer();
+            showToast(`Round completed! Final Score: ${summary.totalStrokes} (${summary.toParFormatted})`);
+        }
+
+        function reopenRoundForEditing() {
+            const booking = getActiveScorecardBooking();
+            if (!booking) return;
+            booking.scorecard.status = "in_progress";
+            saveBookingsToStorage();
+            renderScorecardWorkspace();
+            renderSavedBookingsDrawer();
+        }
+
+        function showToast(message, type = "success") {
+            const toast = document.getElementById("toast-notification");
+            const msgEl = document.getElementById("toast-message");
+            const iconEl = document.getElementById("toast-icon");
+
+            msgEl.textContent = message;
+            iconEl.className = type === "warning" 
+                ? "ph-fill ph-warning-circle text-amber-400 text-xl" 
+                : "ph-fill ph-check-circle text-emerald-400 text-xl";
+
+            toast.classList.remove("translate-y-24", "opacity-0");
+            setTimeout(() => {
+                toast.classList.add("translate-y-24", "opacity-0");
+            }, 3400);
+        }
+
+        // =========================================================================
+        // 14. ONE-TIME INITIALIZATION ON APP LOAD (NO BACKGROUND TIMERS)
+        // =========================================================================
+        document.addEventListener("DOMContentLoaded", async () => {
+            buildUpcomingDatesList();
+            loadSavedBookingsFromStorage();
+
+            const radiusSlider = document.getElementById("radius-slider");
+            if (radiusSlider) {
+                radiusSlider.addEventListener("input", applyFilters);
+            }
+
+            // Perform the single one-time 8-day weather snapshot fetch on startup
+            await fetchOneTimeWeatherSnapshot(false);
+            refreshAllViewsFromCache();
+        });
+    </script>
+</body>
+</html>
